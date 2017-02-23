@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TobiiLogger", "EyeXServer\TobiiLogger.csproj", "{211AF5A1-A9CC-4B29-97E3-661DDAE0E926}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TobiiLogger", "TobiiServer\TobiiLogger.csproj", "{211AF5A1-A9CC-4B29-97E3-661DDAE0E926}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalGazeDataStream", "..\..\..\..\..\..\..\..\Program Files (x86)\TobiiEyeSDK\C#\source\MinimalSamples\MinimalGazeDataStream\MinimalGazeDataStream.csproj", "{58F6D103-1290-4555-B7BA-BE18FE782D72}"
 EndProject
