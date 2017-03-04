@@ -2,6 +2,7 @@
 using Tobii.EyeX.Framework;
 using NLog;
 using Newtonsoft.Json;
+using System;
 
 namespace TobiiLogger
 {
@@ -11,6 +12,9 @@ namespace TobiiLogger
 
         static private Server _server;
 
+        private static Int64 _beginTime;
+        private static Int64 _endTime;
+
         /**
          *  The Program entrypoint. Set ups the EyeX objects and their handlers,
          *  the udp server and start the logic.
@@ -18,6 +22,8 @@ namespace TobiiLogger
         static void Main(string[] args)
         {
             _logger.Info("Starting TobiiLogger...");
+
+            _beginTime = (Int64) (DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
 
             var host = new EyeXHost();
             host.Start();
@@ -31,6 +37,7 @@ namespace TobiiLogger
             _server = new Server();
             _server.Serve();
 
+            _endTime = (Int64)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
             _logger.Info("Exiting TobiiLogger...");
 
             _server.Close();
@@ -42,14 +49,14 @@ namespace TobiiLogger
             public string Name;
             public double X;
             public double Y;
-            public double Timestamp;
+            public string Timestamp;
 
             public Point(string name, double x, double y, double timestamp)
             {
                 this.Name = name;
                 this.X = x;
                 this.Y = y;
-                this.Timestamp = timestamp;
+                this.Timestamp = timestamp.ToString();
             }
 
             public Point(GazePointEventArgs e)
@@ -57,7 +64,7 @@ namespace TobiiLogger
                 this.Name = "gaze";
                 this.X = e.X;
                 this.Y = e.Y;
-                this.Timestamp = e.Timestamp;
+                this.Timestamp = e.Timestamp.ToString();
             }
 
             public Point(FixationEventArgs e)
@@ -65,7 +72,7 @@ namespace TobiiLogger
                 this.Name = "fixation";
                 this.X = e.X;
                 this.Y = e.Y;
-                this.Timestamp = e.Timestamp;
+                this.Timestamp = e.Timestamp.ToString();
             }
         }
 
@@ -87,7 +94,20 @@ namespace TobiiLogger
         {
             _logger.Trace("FixationEvent: X:{0} Y: {1} TIMESTAMP: {2}", e.X, e.Y, e.Timestamp);
             Point data = new Point(e);
+            data.Timestamp = System.DateTime.Now.ToShortTimeString();
             _server.Broadcast(JsonConvert.SerializeObject(data));
+        }
+
+        /**
+         * Timestamp correction utility function.
+         * 
+         * Timestamps provided by the Tobii EyeSDK are arbitrary / relative to each others,
+         * it is thus necessary to use a little function to register record beginning and end
+         * to provide useful timestamps.
+         */
+        public void time( double timestamp )
+        {
+            var time = DateTime.UtcNow;
         }
     }
 }

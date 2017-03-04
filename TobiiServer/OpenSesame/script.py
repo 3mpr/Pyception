@@ -3,6 +3,7 @@ import os
 import json
 import threading
 import csv
+import time
 
 class TobiiLogger:
 
@@ -20,9 +21,11 @@ class TobiiLogger:
 
 		self.parser = json.JSONDecoder();
 
-		self.field_names = ['Timestamp', 'X', 'Y']
+		self.field_names = ['TrueTime', 'Timestamp', 'X', 'Y']
 		self.csv_path = os.path.join( var.experiment_path, 'subjects' )
 		self.csv_path = os.path.join( self.csv_path, ('tobii-subject-%d.csv' % var.subject_nr) );
+
+		self.time = lambda: int(round(time.time() * 1000))
 
 	def __del__( self ):
 
@@ -61,12 +64,29 @@ class TobiiLogger:
 
 			writer = csv.DictWriter(csvfile, fieldnames = self.field_names, dialect = 'excel', lineterminator = '\n')
 			writer.writeheader()
+
+			cpt = 0
 			while self.connected:
 
 				data = self.sock.recv(1048)
 				coord = self.parser.decode(data)
 
-				writer.writerow({'Timestamp': coord['Timestamp'], 'X': unicode(coord['X']), 'Y': unicode(coord['Y'])})
+				if cpt == 0:
+
+					writer.writerow( { 'TrueTime': self.time(), 'Timestamp': coord['Timestamp'], 'X': unicode(coord['X']), 'Y': unicode(coord['Y']) } )
+
+				elif cpt >= 199:
+
+					writer.writerow( { 'TrueTime': self.time(), 'Timestamp': coord['Timestamp'], 'X': unicode(coord['X']), 'Y': unicode(coord['Y']) } )
+					cpt = 0
+
+				elif cpt % 2 == 0:
+
+					writer.writerow({'Timestamp': coord['Timestamp'], 'X': unicode(coord['X']), 'Y': unicode(coord['Y'])})
+
+				cpt = cpt + 1
+
+			writer.writerow( { 'TrueTime': self.time() } )
 
 		self.sock.sendto("close", ("127.0.0.1", 4527))
 		self.sock.close()
