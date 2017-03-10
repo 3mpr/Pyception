@@ -250,3 +250,7 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Project-related
+TobiiStatistics/Data
+TobiiStatistics/FixedData
