@@ -10,7 +10,7 @@ class Area(object):
     Simplistic 2D area reprensation.
     Takes 2 points, up-left and down-right.
     """
-
+# ------------------------------------------------------------------------------------------- MAGIC
     def __init__(self, point_up_left, point_down_right):
         self._up_left = point_up_left
         self._down_right = point_down_right
@@ -19,7 +19,7 @@ class Area(object):
         returned = "Top left: " + str(self._up_left) + " Down right: " + str(self._down_right)
         returned = returned + " Area covered: " + str(self.area())
         return returned
-
+# ----------------------------------------------------------------------------------------- METHODS
     def area(self):
         """
         Computes the covered area.

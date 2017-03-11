@@ -14,16 +14,29 @@ class GazeData(Datasheet):
     Implementing classes must implement this method in order to give correct
     gaze data. That is to say a Timestamp and Point per iteration.
     """
-
+# ----------------------------------------------------------------------------------------- METHODS
     def gaze_points(self):
         """
         This method is a generator that returns a Point and a timestamp per iteration.
         """
-        raise NotImplementedError("Object GazeData should not be instanciated in itself!")
+        raise NotImplementedError("Call to abstract class.")
 
     @staticmethod
     def create(source_file_path, scalex=1920, scaley=1080, delimiter=";"):
         """
         Tiny factory to delegate object creation.
         """
-        raise NotImplementedError("Object GazeData should not be instanciated in itself!")
+        raise NotImplementedError("Call to abstract class.")
+    
+    def begin(self):
+        """
+        Returns the first timestamp.
+        """
+        raise NotImplementedError("Call to abstract class.")
+
+    def end(self):
+        """
+        Returns the last timestamp.
+        """
+        raise NotImplementedError("Call to abstract class.")
+        
