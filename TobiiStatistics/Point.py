@@ -11,14 +11,14 @@ class Point(object):
     """
     Simple class that hold the 2D coordinates of a point.
     """
-
+# ------------------------------------------------------------------------------------------- MAGIC
     def __init__(self, pos_x, pos_y):
         self.x = float(pos_x)
         self.y = float(pos_y)
 
     def __str__(self):
         return str(self.x) + ":" + str(self.y)
-
+# ----------------------------------------------------------------------------------------- METHODS
     @staticmethod
     def create(point_representation):
         """
@@ -79,6 +79,3 @@ class Point(object):
             point.x = point.x*scalex
             point.y = point.y*scaley
         return point
-
-# itr = Interpret(join(os.getcwd(), "Data"))
-# itr.dump("all", join(os.getcwd(), "FixedData"))

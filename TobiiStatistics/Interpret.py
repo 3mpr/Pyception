@@ -8,37 +8,44 @@ by Florian Indot <florian.indot@gmail.com>
 import os
 import os.path
 from os.path import join
-import DualEyeGazeData
-import DirectGazeData
+
+from DualEyeGazeData import DualEyeGazeData
+from DirectGazeData import DirectGazeData
+from Point import Point
+from Area import Area
 
 class Interpret(object):
     """
     Package main class, encapsulates most of the other classes methods
     within a general "subject to data" logic.
     """
+# ------------------------------------------------------------------------------------------- MAGIC
     def __init__(self, subject_dir, dual=True):
         self._subject_dir = subject_dir
         self._subjects = os.listdir(subject_dir)
-        self._data_format = (DualEyeGazeData.DualEyeGazeData.create if dual
-                             else DirectGazeData.DirectGazeData.create)
+        self._data_format = (DualEyeGazeData.create if dual else DirectGazeData.create)
 
-    def dump(self, subject_name, destination_dir):
+# ----------------------------------------------------------------------------------------- METHODS
+    def inspect(self):
         """
-        Dumps the given subject updated file in the given
-        directory. If "all" is given in place of subject,
-        every subjects in the subject directory will be
-        dumped.
+        TODO
         """
-        csv_ext = lambda x: str(os.path.splitext(x)[0]) + ".csv"
+        for subject in self._subjects:
+            subject = self._data_format(os.path.join(self._subject_dir, subject), "Analytics")
+            subject.analyze()
 
-        if subject_name == "all":
-            for subject_file in self._subjects:
-                subject_csv = self._data_format(join(self._subject_dir, subject_file))
-                subject_csv.dump(os.path.join(destination_dir, csv_ext(subject_file)))
-        else:
-            subject_csv = self._data_format(join(self._subject_dir, subject_name))
-            subject_csv.dump(os.path.join(destination_dir, csv_ext(subject_file)))
-
+    def watched(self, subject_file, area):
+        """
+        TODO
+        """
+        subject_csv = self._data_format(join(self._subject_dir, subject_file))
+        within_area = list()
+        for record in subject_csv:
+            point = Point.create(record["GazePoint"])
+            if area.contains(point):
+                within_area.append(record)
+        return within_area
 
 if __name__ == "__main__":
     print "Say something."
+

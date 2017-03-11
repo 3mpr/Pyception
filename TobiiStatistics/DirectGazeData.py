@@ -10,12 +10,12 @@ from Point import Point
 
 class DirectGazeData(GazeData):
     """
-    TODO
+    TODO - NOT IMPLEMENTED
     """
-
+# ------------------------------------------------------------------------------------------- MAGIC
     def __init__(self, source_file_path, fieldnames, delimiter=";"):
         super(DirectGazeData, self).__init__(source_file_path, fieldnames, delimiter)
-
+# ----------------------------------------------------------------------------------------- METHODS
     def gaze_points(self):
         raise NotImplementedError("Yet to be implemented.")
 
