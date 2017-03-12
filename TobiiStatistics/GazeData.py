@@ -14,6 +14,10 @@ class GazeData(Datasheet):
     Implementing classes must implement this method in order to give correct
     gaze data. That is to say a Timestamp and Point per iteration.
     """
+# ------------------------------------------------------------------------------------------- MAGIC
+    def __iter__(self):
+        raise NotImplementedError("Call to abstract class.")
+
 # ----------------------------------------------------------------------------------------- METHODS
     def gaze_points(self):
         """
@@ -22,12 +26,12 @@ class GazeData(Datasheet):
         raise NotImplementedError("Call to abstract class.")
 
     @staticmethod
-    def create(source_file_path, scalex=1920, scaley=1080, delimiter=";"):
+    def create(source, scalex=1920, scaley=1080, delimiter=";"):
         """
         Tiny factory to delegate object creation.
         """
         raise NotImplementedError("Call to abstract class.")
-    
+
     def begin(self):
         """
         Returns the first timestamp.

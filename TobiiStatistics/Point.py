@@ -40,8 +40,8 @@ class Point(object):
             return Point(pos_x, pos_y)
 
         possible_expressions = [
-            r"^\[([0-9]*,[0-9]*),([0-9]*,[0-9]*)\]",
-            r"^([0-9]*.[0-9]*):([0-9]*.[0-9]*)"
+            r"\[([0-9]*,[0-9]*),([0-9]*,[0-9]*)\]",
+            r"([0-9]*.[0-9]*):([0-9]*.[0-9]*)"
         ]
 
         for expression in possible_expressions:
