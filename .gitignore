@@ -252,5 +252,5 @@ paket-files/
 *.sln.iml
 
 # Project-related
-TobiiStatistics/RawData
-TobiiStatistics/Analytics
+**/RawData/*
+**/Analytics/*

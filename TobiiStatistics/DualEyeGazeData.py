@@ -10,8 +10,8 @@ import os.path
 import re
 
 from Datasheet import Datasheet
-from GazeData import GazeData
 from Point import Point
+from GazeData import GazeData
 
 class DualEyeGazeData(GazeData):
     """
@@ -152,10 +152,3 @@ class DualEyeGazeData(GazeData):
 
     def raw(self):
         return self._csv
-
-
-# import os
-# import os.path
-# from os.path import join
-# from DualEyeGazeData import DualEyeGazeData
-# deg = DualEyeGazeData(join(os.getcwd(), "RawData", "Aaron.log"), "Analytics")
