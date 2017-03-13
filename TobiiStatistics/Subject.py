@@ -59,8 +59,8 @@ class Subject(object):
         position = 0
         in_chunk = False
 
-        self.logger.debug(
-            "Scanning %s subject for data chunks.",
+        self.logger.info(
+            "   Scanning %s subject for data chunks...",
             self._name,
             extra=self.log_scheme
         )
@@ -108,8 +108,8 @@ class Subject(object):
 
             position = position + 1
 
-        self.logger.debug(
-            "Found %d chunks.",
+        self.logger.info(
+            "   Found %d chunks.",
             len(chunks),
             extra=self.log_scheme
         )
@@ -123,6 +123,12 @@ class Subject(object):
         """
         chunks = self.chunks()
         fieldnames = ["Timestamp", "GazePoint"]
+
+        self.logger.info(
+            "   Dividing %s raw file into chunks...",
+            self._name,
+            extra=self.log_scheme
+        )
 
         for chunk in chunks:
             chunk_name = chunk["name"] + chunk["nr"]
@@ -141,7 +147,12 @@ class Subject(object):
             chunk_datasheet = self._gaze_data_factory(None, chunk_table)
             self._chunks[chunk_name] = chunk_datasheet
 
-            self.logger.debug("Done.", extra=self.log_scheme)
+            self.logger.debug("DONE.", extra=self.log_scheme)
+
+        self.logger.info(
+            "   DONE.",
+            extra=self.log_scheme
+        )
 
         raw_table = self._gaze_data.copy(fieldnames)
         self._raw = self._gaze_data_factory(None, raw_table)
@@ -150,10 +161,18 @@ class Subject(object):
         """
         TODO
         """
+
+        self.logger.info(
+            "%s : Scanning chunks for area correlation. AREA : %s",
+            self._name.upper(),
+            str(area),
+            extra=self.log_scheme
+        )
+
         proof_rate_list = list()
         for chunk in self._chunks:
-            self.logger.debug(
-                "Analysing chunk %s...",
+            self.logger.info(
+                "   Analysing chunk %s...",
                 chunk,
                 extra=self.log_scheme
             )
@@ -171,10 +190,15 @@ class Subject(object):
 
                 proof_rate_list.append(proof_element)
 
+                self.logger.info(
+                    "   DONE.",
+                    extra=self.log_scheme
+                )
+
             except ValueError as error:
 
                 self.logger.error(
-                    self._name + ": Corrupted chunk data - Error : %s",
+                    "FAILED : Corrupted data chunk - Error : %s",
                     error.message,
                     extra=self.log_scheme
                 )
@@ -183,7 +207,7 @@ class Subject(object):
             except IndexError as error:
 
                 self.logger.error(
-                    self._name + ": Corrupted chunk data - Error : %s",
+                    self._name + ": Corrupted data chunk - Error : %s",
                     error.message,
                     extra=self.log_scheme
                 )

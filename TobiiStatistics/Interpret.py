@@ -30,7 +30,7 @@ class Interpret(object):
     """
     logger = logging.getLogger("TobiiStatistics")
 # ------------------------------------------------------------------------------------------- MAGIC
-    def __init__(self, dual=True, subject_dir=None, save_path=None):
+    def __init__(self, dual=True):
         self.log_scheme = {"class": self.__class__.__name__}
         log_format = "%(asctime)-10s TobiiStatistics : %(message)s"
         logging.basicConfig(format=log_format)
@@ -43,79 +43,57 @@ class Interpret(object):
             extra=self.log_scheme
         )
 
-        if subject_dir is not None:
-            self.bootstrap_raw_data(subject_dir)
-        else:
-            self._subject_dir = None
-
-        if save_path is not None:
-            self._save_path = save_path
-        else:
-            self._save_path = None
-
 # ----------------------------------------------------------------------------------------- METHODS
-    def bootstrap_raw_data(self, subject_dir):
+    def folks(self, subject_dir):
         """
         Initializes the interpret's behaviour to read from a csv folder
         and read and evaluate each cssv data file into Subject files.
         """
         self.logger.info("Preparing Interpret for raw data scan.", extra=self.log_scheme)
 
-        self._subject_dir = subject_dir
-        self._subject_list = os.listdir(subject_dir)
-        self._subjects = list()
+        subject_list = os.listdir(subject_dir)
+        subjects = list()
 
         self.logger.info(
             "Found %d elements in %s.",
-            len(self._subject_list),
+            len(subject_list),
             subject_dir,
             extra=self.log_scheme
         )
 
         scan_start_time = time.time()
-        for subject in self._subject_list:
+
+        for subject in subject_list:
             self.logger.info("Scanning %s...", subject, extra=self.log_scheme)
-            self._subjects.append(Subject(
-                self._data_format(os.path.join(self._subject_dir, subject)),
+            subjects.append(Subject(
+                self._data_format(os.path.join(subject_dir, subject)),
                 FinalGazeData.create
             ))
+
         scan_end_time = time.time()
-        time_taken = scan_end_time - scan_start_time
+
         self.logger.info(
-            "Done. Scan performed in %f seconds",
-            time_taken,
+            "DONE. Scan performed in %f seconds",
+            scan_end_time - scan_start_time,
             extra=self.log_scheme
         )
 
-    def probe(self, subject_dir=None, save=False, save_path=None):
+        return subjects
+
+    def probe(self, subjects, save=False, save_path=None):
         """
         Probes attached subjects. The probe analyses the subject files, looking for possible
         chunks as defined in Subject.chunks().
         """
         time_start = time.time()
 
-        if self._subject_dir is None and subject_dir is None:
-
-            raise EnvironmentError("Subject directory needs to be defined"
-                                   + "as a probe parameter or before probe call.")
-            # TODO REPLACE EnvironmentError w/ another error
-
-        elif self._subject_dir is not None and subject_dir is not None:
-
-            self.logger.info("Subject directory already provided.")
-
-        elif subject_dir is not None and self._subject_dir is None:
-
-            self.bootstrap_raw_data(subject_dir)
+        self.logger.info(
+            "Preparing Intepret for intermediate data probing.",
+            extra=self.log_scheme
+        )
 
         save_path = os.path.join(os.getcwd(), "Analytics") if save_path is None else save_path
-        for subject in self._subjects:
-            self.logger.debug(
-                "Dividing %s raw file into chunks...",
-                subject.name(),
-                extra=self.log_scheme
-            )
-
+        for subject in subjects:
             subject.divide()
             if save:
                 subject.save(save_path)
@@ -123,69 +101,89 @@ class Interpret(object):
         time_end = time.time()
 
         self.logger.info(
-            "Probe finished. Took %f seconds.",
+            "DONE. Probe performed in %f seconds.",
             time_end - time_start,
             extra=self.log_scheme
         )
 
-    def analyze(self, area):
+    def analyze(self, subject, area):
         """
         TODO
         """
-        stats = list()
-        for subject in self._subjects:
+        self.logger.debug(
+            "Analysing %s chunks...",
+            subject.name(),
+            extra=self.log_scheme
+        )
 
-            self.logger.debug(
-                "Analysing %s chunks...",
-                subject.name(),
-                extra=self.log_scheme
-            )
+        stat = {
+            "subject": subject.name(),
+            "data": subject.analyze(area)
+        }
 
-            stat = {
-                "subject": subject._name,
-                "data": subject.analyze(area)
-            }
+        return stat
 
-            stats.append(stat)
-
-        return stats
-
-    def inspect(self, areas):
+    def inspect(self, subject, areas):
         """
         Shorthand for analyze() on multiple areas.
         """
-        audit = list()
+        area_data = list()
         for area in areas:
-            data = self.analyze(area)
+            data = self.analyze(subject, area)
             data = {
-                "area":str(area),
+                "area": str(area),
                 "stats": data
             }
-            audit.append(data)
-        return audit
+            area_data.append(data)
 
-    def investigate(self, areas, save_path=None):
+        return area_data
+
+    def investigate(self, subjects, areas, save_path=None):
         """
-        Does the same as inspect() but dumps the result to a javascript file
+        Does the same as inspect() but dumps the result to a json file
         for each subject.
         """
         save_path = os.path.join(os.getcwd(), "Analytics") if save_path is None else save_path
-        audit = self.inspect(areas)
-        json_file = json.dumps(audit, sort_keys=True, indent=4, separators=(',', ': '))
-        with open("log.json", "w") as fout:
-            fout.write(json_file)
+
+        self.logger.info(
+            "Preparing Interpret for data to area correlation.",
+            extra=self.log_scheme
+        )
+
+        time_start = time.time()
+
+        for subject in subjects:
+            correlation_file_path = os.path.join(
+                os.getcwd(),
+                save_path,
+                subject.name(),
+                "correlation.json"
+            )
+
+            audit = self.inspect(subject, areas)
+            json_file = json.dumps(audit, sort_keys=True, indent=4, separators=(',', ': '))
+
+            with open(correlation_file_path, "w") as fout:
+                fout.write(json_file)
+
+        time_end = time.time()
+
+        self.logger.info(
+            "DONE. Subject data to area correlation performed in %f seconds.",
+            time_end - time_start,
+            extra=self.log_scheme
+        )
 
 
 if __name__ == "__main__":
-    ITR = Interpret()
-
-    ITR.probe("RawData", True)
-
     AREAS = list()
-    # AREA = Area(Point(0, 0), Point(1920, 1080))
-    # AREAS.append(AREA)
     AREA = Area(Point(0, 0), Point(768, 1080))
     AREAS.append(AREA)
     AREA = Area(Point(1152, 0), Point(1920, 1080))
     AREAS.append(AREA)
-    print ITR.investigate(AREAS)
+
+    ITR = Interpret(dual=True)
+
+    FOLKS = ITR.folks("RawData")
+    ITR.probe(FOLKS, True)
+    ITR.investigate(FOLKS, AREAS)
