@@ -4,7 +4,7 @@
 Written the 10/03/2017 as a part of the TobiiStatistics package
 by Florian Indot <florian.indot@gmail.com>
 
-Last update: 11/03/2017
+Last update: 13/03/2017
 """
 
 import csv

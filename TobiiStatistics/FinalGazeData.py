@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-Written the 10/03/2017 as a part of the TobiiStatistics package
+Written the 13/03/2017 as a part of the TobiiStatistics package
 by Florian Indot <florian.indot@gmail.com>
-
-Updated the 12/03/2017
 """
 
 from GazeData import GazeData
