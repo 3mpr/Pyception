@@ -16,9 +16,7 @@ class Area(object):
         self._down_right = point_down_right
 
     def __str__(self):
-        returned = "Top left: " + str(self._up_left) + " Down right: " + str(self._down_right)
-        returned = returned + " Area covered: " + str(self.area())
-        return returned
+        return str(self._up_left) + ";" + str(self._down_right)
 # ----------------------------------------------------------------------------------------- METHODS
     def area(self):
         """

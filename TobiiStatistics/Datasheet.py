@@ -36,6 +36,9 @@ class Datasheet(object):
     def __iter__(self):
         return iter(self._table)
 
+    def __getitem__(self, key):
+        return self._table[key]
+
 # ----------------------------------------------------------------------------------------- METHODS
     def open(self, source):
         """
@@ -111,6 +114,8 @@ class Datasheet(object):
 
         return False, False
 
+
+
 # ---------------------------------------------------------------------------------------- MUTATORS
     def fieldnames(self, fieldnames=None):
         """
@@ -132,3 +137,10 @@ class Datasheet(object):
         alteration mutator.
         """
         return self._altered
+
+    def size(self):
+        """
+        Returns the number of row of this Datasheet.
+        """
+        return self._size
+        

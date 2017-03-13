@@ -20,10 +20,12 @@ class DualEyeGazeData(GazeData):
     Datasheet for dual eye gaze point csv files.
     """
 # ------------------------------------------------------------------------------------------- MAGIC
-    def __init__(self, source, scalex=1920, scaley=1080, delimiter=";"):
+    def __init__(self, source=None, table=None, scalex=1920, scaley=1080, delimiter=";"):
         super(DualEyeGazeData, self).__init__(
             source,
-            ["Timestamp", "ActionContext", "Action", "LeftEye", "RightEye"]
+            ["Timestamp", "ActionContext", "Action", "LeftEye", "RightEye"],
+            table,
+            delimiter=delimiter
         )
 
         self.add("GazePoint")
@@ -41,8 +43,8 @@ class DualEyeGazeData(GazeData):
 
 # ----------------------------------------------------------------------------------------- METHODS
     @staticmethod
-    def create(source, scalex=1920, scaley=1080, delimiter=";"):
-        return DualEyeGazeData(source, scalex, scaley, delimiter)
+    def create(source=None, table=None, scalex=1920, scaley=1080, delimiter=";"):
+        return DualEyeGazeData(source, table, scalex, scaley, delimiter)
 
     def _convert(self):
         """
@@ -64,15 +66,17 @@ class DualEyeGazeData(GazeData):
             return focal_point
         return None
 
-    def gaze_points(self):
-        for record in self._table:
-            yield record['Timestamp'], record['GazePoint']
-
     def begin(self):
-        return self._table[-1]["Timestamp"]
+        return float(self._table[1]["Timestamp"].replace(",", "."))
 
     def end(self):
-        return self._table[1]["Timestamp"]
+        return float(self._table[-1]["Timestamp"].replace(",", "."))
+
+    def time(self):
+        """
+        Returns the time elapsed between this object first record and last record.
+        """
+        return self.end() - self.begin()
 
     def raw(self):
         return self._table

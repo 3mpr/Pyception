@@ -19,14 +19,8 @@ class GazeData(Datasheet):
         raise NotImplementedError("Call to abstract class.")
 
 # ----------------------------------------------------------------------------------------- METHODS
-    def gaze_points(self):
-        """
-        This method is a generator that returns a Point and a timestamp per iteration.
-        """
-        raise NotImplementedError("Call to abstract class.")
-
     @staticmethod
-    def create(source, scalex=1920, scaley=1080, delimiter=";"):
+    def create(source, table=None, scalex=1920, scaley=1080, delimiter=";"):
         """
         Tiny factory to delegate object creation.
         """
@@ -43,4 +37,10 @@ class GazeData(Datasheet):
         Returns the last timestamp.
         """
         raise NotImplementedError("Call to abstract class.")
-        
+
+    def time(self):
+        """
+        Returns the time elapsed between the first record an
+        the last record of this dataset.
+        """
+        raise NotImplementedError("Call to abstract class.")
