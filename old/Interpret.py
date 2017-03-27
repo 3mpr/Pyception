@@ -10,18 +10,20 @@ Updated the 13/03/2017
 
 import os
 import os.path
-from os.path import join
+import csv
 import time
 import logging
 import json
+import sys
+import re
 
-from Datasheet import Datasheet
-from DualEyeGazeData import DualEyeGazeData
+from Area import Area
+from Point import Point
 from DirectGazeData import DirectGazeData
+from DualEyeGazeData import DualEyeGazeData
 from FinalGazeData import FinalGazeData
 from Subject import Subject
-from Point import Point
-from Area import Area
+
 
 class Interpret(object):
     """
@@ -29,8 +31,10 @@ class Interpret(object):
     within simple method facilities.
     """
     logger = logging.getLogger("TobiiStatistics")
-# ------------------------------------------------------------------------------------------- MAGIC
+
+    # ------------------------------------------------------------------------------------------- MAGIC
     def __init__(self, dual=True):
+        # type: (dual) -> bool
         self.log_scheme = {"class": self.__class__.__name__}
         log_format = "%(asctime)-10s TobiiStatistics : %(message)s"
         logging.basicConfig(format=log_format)
@@ -43,11 +47,13 @@ class Interpret(object):
             extra=self.log_scheme
         )
 
-# ----------------------------------------------------------------------------------------- METHODS
+    # ----------------------------------------------------------------------------------------- METHODS
     def folks(self, subject_dir):
+        # type: (subject_dir) -> string
         """
-        Initializes the interpret's behaviour to read from a csv folder
-        and read and evaluate each cssv data file into Subject files.
+        Analyzes the given directory and returns a list of <Subject>.
+        :type subject_dir: string
+        :returns list<Subject>
         """
         self.logger.info("Preparing Interpret for raw data scan.", extra=self.log_scheme)
 
@@ -70,11 +76,9 @@ class Interpret(object):
                 FinalGazeData.create
             ))
 
-        scan_end_time = time.time()
-
         self.logger.info(
             "DONE. Scan performed in %f seconds",
-            scan_end_time - scan_start_time,
+            time.time() - scan_start_time,
             extra=self.log_scheme
         )
 
@@ -93,6 +97,7 @@ class Interpret(object):
         )
 
         save_path = os.path.join(os.getcwd(), "Analytics") if save_path is None else save_path
+
         for subject in subjects:
             subject.divide()
             if save:
@@ -174,6 +179,50 @@ class Interpret(object):
             extra=self.log_scheme
         )
 
+    def load(self, directory, gaze_data_factory):
+        """
+        TODO
+        """
+        subject_list = os.listdir(directory)
+        # Clean potential non-subject files/folders
+        for subject_folder in subject_list:
+            if len(re.search(r"(.*)", subject_folder).groups()) > 0:
+                subject_list.remove(subject_folder)
+        subjects = list()
+        for subject_folder in subject_list:
+            subject_path = os.path.join(directory, subject_folder)
+            subject_files = os.listdir(subject_path)
+            if "raw.csv" in subject_files:
+                with open(os.path.join(subject_path, "raw.csv"), "r") as fin:
+                    reader = csv.DictReader(fin, delimiter=";")
+                    subject_raw = gaze_data_factory(None, list(reader))
+                    subject_files.remove("raw.csv")
+            chunks = list()
+            for chunk_file in subject_files:
+                with open(os.path.join(subject_path, chunk_file), "r") as fin:
+                    reader = csv.DictReader(fin, delimiter=";")
+                    chunk_data = gaze_data_factory(None, list(reader))
+                    chunks.append(chunk_data)
+            subject = Subject(subject_raw, gaze_data_factory, chunks)
+            subjects.append(subject)
+        return subjects
+
+    def cover(self, raw_dir, analytic_dir, areas):
+        if os.path.exists(analytic_dir):
+            answer = ""
+            while answer.lower() != "y" and answer != "n":
+                print "Directory %s existed before analysis, attempt to load content ?(y/n)"
+                answer = sys.stdin.read()
+
+            if answer == "y":
+                subjects = self.load("Analytics", self._data_format)
+
+    def gaze_factory(self, gaze_factory=None):
+        if gaze_factory is None:
+            return self._data_format
+        else:
+            self._data_format = gaze_factory
+
 
 if __name__ == "__main__":
     AREAS = list()
@@ -184,6 +233,5 @@ if __name__ == "__main__":
 
     ITR = Interpret(dual=True)
 
-    FOLKS = ITR.folks("RawData")
-    ITR.probe(FOLKS, True)
+    FOLKS = ITR.load("Analytics", ITR.gaze_factory())
     ITR.investigate(FOLKS, AREAS)

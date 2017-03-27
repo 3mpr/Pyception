@@ -36,8 +36,6 @@ class DualEyeGazeData(GazeData):
 
         self._sequences = list()
 
-        self._convert()
-
     def __iter__(self):
         return iter(self._table)
 
