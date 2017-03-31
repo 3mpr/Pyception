@@ -9,6 +9,7 @@ last updated: 22.03.2017
 """
 
 import re
+import copy
 
 from Perception.Data.Transaction import Transaction
 from Perception.Data.Operators.ChunkInterface import ChunkInterface
@@ -99,15 +100,17 @@ class ChunkOperator(OperatorInterface, ChunkInterface):
                 in_chunk = False
 
         headers = transaction.headers
-        headers.remove("Action")
-        headers.remove("ActionArgs")
 
         for chunk_specification in chunks_details:
             chunks[chunk_specification["name"]] = transaction.copy(
                 chunk_specification["start"],
                 chunk_specification["end"],
-                headers
+                copy.deepcopy(headers)
             )
+
+        for key in chunks:
+            chunks[key].remove("Action")
+            chunks[key].remove("ActionArgs")
 
         return chunks
 

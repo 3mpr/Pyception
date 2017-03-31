@@ -26,7 +26,8 @@ class TimeOperator(OperatorInterface, TimeInterface):
 
     # ================================================ OperatorInterface
 
-    def __init__(self, to_visit=None):
+    def __init__(self, to_visit=None, skip_first_timestamp=True):
+        self.skip_first_timestamp = skip_first_timestamp
         self._visited = None
         if to_visit is not None:
             self.visit(to_visit)
@@ -35,8 +36,9 @@ class TimeOperator(OperatorInterface, TimeInterface):
         __doc__ = OperatorInterface.visit.__doc__
         if "Timestamp" in paper.headers:
             self._visited = paper
-            return self.time
-        return False
+        else:
+            self._visited = None
+        return paper
 
     def involve(self, paper=None):
         __doc__ = OperatorInterface.involve.__doc__
@@ -59,7 +61,10 @@ class TimeOperator(OperatorInterface, TimeInterface):
     def begin(self):
         __doc__ = TimeInterface.begin.__doc__
         if self.involve(self._visited):
-            return float(self._visited.table[0]["Timestamp"].replace(',', '.'))
+            if self.skip_first_timestamp:
+                return float(self._visited.table[1]["Timestamp"].replace(',', '.'))
+            else:
+                return float(self._visited.table[0]["Timestamp"].replace(',', '.'))
         return -1.0
 
     @property

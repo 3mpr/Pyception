@@ -25,6 +25,10 @@ class GazeOperator(OperatorInterface, GazeInterface):
 
     def __init__(self, area):
         # type: (Area) -> None
+        """
+        :param area: The surface dimensions the GazePoints should be scaled to
+                     (1:1 for no-scaling, 1920*1080 for fhd scaling).
+        """
         self._area = area
         self._radius_table = list()
 
@@ -38,8 +42,10 @@ class GazeOperator(OperatorInterface, GazeInterface):
         __doc__ = OperatorInterface.involve.__doc__
         return "LeftEye" in transaction.headers and "RightEye" in transaction.headers
 
-    def when(self, paper, callback, kwargs=None):
+    def when(self, transaction, callback, kwargs=None):
         __doc__ = OperatorInterface.when.__doc__
+        if self.involve(transaction):
+            callback(kwargs)
 
     # =========================================================== GazeInterface
 
@@ -56,11 +62,11 @@ class GazeOperator(OperatorInterface, GazeInterface):
         __doc__ = GazeInterface.convert.__doc__
         transaction.add("GazePoint")
         for index in range(transaction.count()):
-            left_eye_point = Point.read(transaction.table[index]["LeftEye"])
-            right_eye_point = Point.read(transaction.table[index]["RightEye"])
+            left_eye_point = Point.read(transaction[index]["LeftEye"])
+            right_eye_point = Point.read(transaction[index]["RightEye"])
 
             if left_eye_point is None or right_eye_point is None:
-                transaction.table[index]["GazePoint"] = ""
+                transaction[index]["GazePoint"] = ""
                 continue
 
             left_eye_point.scale(self._area.width, self._area.height)
@@ -69,5 +75,11 @@ class GazeOperator(OperatorInterface, GazeInterface):
             focal_point, x_radius, y_radius = self.focal(left_eye_point, right_eye_point)
             self._radius_table.append({'x': x_radius, 'y': y_radius})
 
-            transaction.table[index]["GazePoint"] = str(focal_point)
+            transaction[index]["GazePoint"] = str(focal_point)
+        transaction.remove("LeftEye")
+        transaction.remove("RightEye")
         return transaction
+
+    @property
+    def radius(self):
+        return self._radius_table

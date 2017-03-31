@@ -10,7 +10,9 @@
 
 import csv
 import os.path
+import io
 import re
+import random
 
 from Perception.Design.Visited import Visited
 from Perception.Design.VisitorInterface import VisitorInterface
@@ -20,6 +22,62 @@ class Transaction(Visited):
     """
     In-memory representation of a CSV file.
     """
+
+    class Row(object):
+
+        def __init__(self, table, headers):
+            self._table = list()
+            self._headers = headers
+            if type(table) is dict:
+                for key in table:
+                    self._table.append(table[key])
+            elif type(table) is tuple:
+                for element in table:
+                    self._table.append(element)
+            elif type(table) is list:
+                self._table = table
+            else:
+                raise TypeError("Row object cannot be initialized from {}.".format(type(table)))
+
+        def __getitem__(self, item):
+            if type(item) is str:
+                if item not in self._headers:
+                    raise IndexError("Element {} does not exist in row.".format(item))
+                return self._table[self._headers.index(item)]
+            return self._table[item]
+
+        def __setitem__(self, key, value):
+            if type(key) is str:
+                if self._headers.index(key) > len(self._table) - 1:
+                    self._table.append(value)
+                else:
+                    self._table[self._headers.index(key)] = value
+            else:
+                self._table[key] = value
+
+        def __delitem__(self, key):
+            if type(key) is str:
+                del self._table[self._headers.index(key)]
+            else:
+                del self._table[key]
+
+        def __str__(self):
+            return str(self._table)
+
+        def __iter__(self):
+            return iter(self._table)
+
+        def __len__(self):
+            return len(self._table)
+
+        @property
+        def content(self):
+            return self._table
+
+        @property
+        def headers(self):
+            return self._headers
+
 # ------------------------------------------------------------------------------------------- MAGIC
 
     def __init__(self, table, headers, delimiter=";"):
@@ -29,7 +87,9 @@ class Transaction(Visited):
         :param delimiter: char
         :rtype: Transaction
         """
-        self._table = table
+        self._table = list()
+        for row in table:
+            self._table.append(Transaction.Row(row, headers))
         self._headers = headers
         self._delimiter = delimiter
 
@@ -48,6 +108,8 @@ class Transaction(Visited):
 
     def __delitem__(self, key):
         del self._table[key]
+        for index in range(key, self.count() - 1):
+            self._table[key] = self._table[key + 1]
 
     def __eq__(self, other):
         if self.count() != other.count():
@@ -72,22 +134,28 @@ class Transaction(Visited):
 # ----------------------------------------------------------------------------------------- METHODS
 
     @staticmethod
-    def open(file_path, headers=None, delimiter=";"):
+    def open(file_path, headers=None, delimiter=";", enforce_policy=None):
         """
-        Tiny object factory that opens a CSV file and returns a Paper.
-        The returned paper is bound to the specified file.
+        Tiny object factory that opens a CSV file and returns a Transaction.
+        The returned transaction is bound to the specified file.
 
         :param file_path: string
         :param headers: List
         :param delimiter: char
         :rtype: Transaction
         """
-        with open(file_path, "r") as fin:
-            reader = csv.DictReader(fin, headers, delimiter=delimiter)
+        with io.open(file_path, newline='') as fin:
+            reader = csv.reader(fin, delimiter=delimiter)
             table = list(reader)
-            paper = Transaction(table, reader.fieldnames, delimiter)
-        paper.bind(file_path, True)
-        return paper
+            transaction = Transaction(table, headers, delimiter)
+
+        if enforce_policy is not None:
+            print enforce_policy
+            validator = CSValidator(enforce_policy)
+            validator.validate(transaction)
+
+        transaction.bind(file_path, False)
+        return transaction
 
     def save(self, destination=None):
         """
@@ -98,7 +166,7 @@ class Transaction(Visited):
         :rtype: void
         """
         if destination is None and not self._bound:
-            raise IOError("Transaction save requester but paper is not linked to any source.")
+            raise IOError("Transaction save requested but transaction is not linked to any source.")
 
         destination = self._file if destination is None else destination
 
@@ -109,7 +177,7 @@ class Transaction(Visited):
                 to_write = {}
                 for header in self._headers:
                     to_write[header] = row[header]
-                writer.writerows(to_write)
+                writer.writerow(to_write)
 
     def bind(self, source, verify=True, overwrite=False):
         """
@@ -125,10 +193,10 @@ class Transaction(Visited):
             raise IOError("Requested bind to %s but path does not exist." % source)
 
         if verify:
-            paper = Transaction.open(source)
-            if not paper == self and not overwrite:
+            transaction = Transaction.open(source)
+            if not transaction == self and not overwrite:
                 raise AssertionError(
-                    "Requested bind to %s but in-memory paper and source paper are not equals."
+                    "Requested bind to %s but in-memory transaction and source transaction are not equals."
                     % source
                 )
 
@@ -137,7 +205,7 @@ class Transaction(Visited):
 
     def unbind(self):
         """
-        Unbind this paper from its source and returns.
+        Unbind this transaction from its source and returns.
 
         :return: string
         """
@@ -165,6 +233,8 @@ class Transaction(Visited):
         :rtype: bool
         """
         if header in self._headers:
+            for row in self._table:
+                del row[header]
             self._headers.remove(header)
             self._adapted = True
             return True
@@ -195,7 +265,7 @@ class Transaction(Visited):
 
     def copy(self, begin=0, end=None, headers=None):
         """
-        Copy this paper from the specified begin point to the specified end point.
+        Copy this transaction from the specified begin point to the specified end point.
         Both are respectively set to 0 and to this Transaction's end when omitted (full copy).
 
         :param begin: int
@@ -218,9 +288,9 @@ class Transaction(Visited):
         table = list()
         table_index = 0
         for index in range(begin, end):
-            table.append({})
+            table.append(list())
             for header in headers:
-                table[table_index][header] = self._table[index][header]
+                table[table_index].append(self._table[index][header])
             table_index += 1
 
         return Transaction(table, headers)
@@ -280,6 +350,47 @@ class Transaction(Visited):
 
         return occur
 
+    def column(self, header):
+        """
+        Returns the column specified by 'header'.
+
+        :param header: string The column's name
+        :return The column
+        :rtype list
+        """
+        if header not in self.headers:
+            raise IndexError("{} does not exist in internal table.".format(header))
+        column = list()
+        for index in range(len(self._table)):
+            column.append(self._table[header])
+        return column
+
+    def mean(self, header=None):
+        """
+        Returns the mean (float) value of the given column.
+        This method only works on columns holding integers, floats and doubles.
+        It can and will raise errors on incorrect column types.
+
+        :param header: string The column's name
+        :return: The mean value
+        :rtype float
+        """
+        if header is not None:
+            return float(sum(self.column(header))) / float(len(self._table))
+
+        mean = 0.0
+        for row in self._table:
+            mean += float(len(row.content))
+        mean /= self.count()
+        return round(mean)
+
+    def sample(self):
+        return list(self[random.randrange(0, self.count() - 1)])
+
+    def index(self, element):
+        # type: (Transaction.Row) -> int
+        return self._table.index(element)
+
 # -------------------------------------------------------------------------------------- PROPERTIES
 
     @property
@@ -315,3 +426,43 @@ class Transaction(Visited):
     @property
     def bound_to(self):
         return self._file
+
+
+POLICY_STOP = 0
+POLICY_IGNORE = 1
+POLICY_PREDICATE = 2
+POLICY_DELETE = 3
+
+POLICIES = [
+    POLICY_STOP,
+    POLICY_IGNORE,
+    POLICY_PREDICATE,
+    POLICY_DELETE
+]
+
+
+class CSValidator(object):
+
+    def __init__(self, policy, predicate = None):
+        assert policy in POLICIES, "Unrecognized policy."
+        self._policy = policy
+        if policy is POLICY_PREDICATE:
+            assert predicate is not None, "Predicate policy specified but no predicate given."
+            self._predicate = predicate
+
+    def validate(self, transaction):
+        for row in transaction.table:
+            if len(row) < len(row.headers):
+                self.invalidate(transaction, transaction.index(row))
+
+    def invalidate(self, transaction, index):
+        assert type(index) is int, "Unable to unvalidate {} in {}.".format(type(index), transaction)
+
+        if self._policy is POLICY_STOP:
+            raise "Error detected at {} in transaction.".format(index)
+        elif self._policy is POLICY_DELETE:
+            print "deleted {}".format(index)
+            print str(transaction[index])
+            del transaction[index]
+        elif self._policy is POLICY_PREDICATE:
+            self._predicate(transaction, index)
