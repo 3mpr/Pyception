@@ -1,4 +1,4 @@
-# TobiiLogger
+# Pyception
 Little Tobii EyeTracking Logging Server.    
     
 This server is intended for use with Tobii __Gaming__ devices.     
