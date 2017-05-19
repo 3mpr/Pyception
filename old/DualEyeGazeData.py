@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Written the 10/03/2017 as a part of the TobiiStatistics package
+Written the 10/03/2017 as a part of the Perception package
 by Florian Indot <florian.indot@gmail.com>
 
 Last update: 13/03/2017

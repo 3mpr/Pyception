@@ -1,0 +1,183 @@
+#AlphaSticker
+{
+		color: white;
+		background-color: #19252A;
+		border-top-left-radius: 10px;
+}
+
+/* ====================================================================================================== QT ELEMENTS */
+
+*
+{
+		padding: 0;
+		margin: 0;
+		border: 0;
+}
+
+/* SCROLLING */
+
+QScrollBar:vertical
+{
+		width: 10px;
+		background: #19252A;
+		height: 210px;
+}
+
+QScrollBar::handle:vertical
+{
+		min-height: 10px;
+		background-color: white;
+}
+
+QScrollBar::add-line:vertical
+{
+		background: #19252A;
+		height: 150px;
+		subcontrol-position: bottom;
+		subcontrol-origin: margin;
+}
+
+QScrollBar::sub-line:vertical
+{
+		background: #19252A;
+		height: 150px;
+		subcontrol-position: top;
+		subcontrol-origin: margin;
+}
+
+QScrollBar::up-arrow:vertical
+{
+		image: none;
+}
+
+QScrollBar::down-arrow:vertical {
+		image: none;
+}
+
+/* ================================================================================================ MAIN APP ELEMENTS */
+
+#CentralWidget
+{
+		min-height: 720px;
+		max-height: 720px;
+
+		padding: 0;
+		margin: 0;
+		border: 0;
+}
+
+#SidebarContainer
+{
+		min-height: 1500px;
+		max-height: 1500px;
+
+		min-width: 80px;
+		max-width: 80px;
+
+		background: none;
+
+		margin: 0;
+		padding: 0;
+		border: none;
+
+		background-color:  #F7F7F7;
+}
+
+#Sidebar
+{
+		background-color: #2A363B;
+
+		border-top-right-radius: 5px;
+		border-bottom-right-radius: 5px;
+
+		min-width: 80px;
+		max-width: 80px;
+
+		margin: 0;
+		padding: 0;
+		border: 0;
+}
+
+#Sidebar QPushButton
+{
+        margin: 10px;
+		padding: 5px;
+		border: 5px;
+
+		min-width: 50px;
+		max-width: 50px;
+
+		min-height: 50px;
+		max-height: 50px;
+
+		background-color: #19252A;
+		border-radius: 5px;
+
+		color: white;
+		font-weight: bold;
+}
+
+#Content
+{
+		background-color:  #F7F7F7;
+}
+
+#Content #Title
+{
+		color: #696969;
+}
+
+/* ================================================================================================== IMPORT / EXPORT */
+
+#FileOperations QWidget
+{
+		background-color: #2A363B;
+		border-radius: 5px;
+}
+
+#Picker #Files
+{
+		background-color: #19252A;
+		padding: 5px;
+}
+
+#Picker #Files *
+{
+		margin: 5px 5px;
+		width: 100%;
+
+		background-color: transparent;
+		color: white;
+		font-weight: bold;
+		font-size: 12pt;
+}
+
+#Picker #Path
+{
+		background-color: #19252A;
+		color: white;
+}
+
+#Picker #ImportButton
+{
+		background-color: #F7F7F7;
+		color: #19252A;
+
+		border-radius: 0;
+}
+
+#Picker #ImportButton:hover
+{
+		background-color: #19252A;
+		color: #F7F7F7;
+}
+
+#Picker #Files *:first
+{
+		margin-top: 10px;
+}
+
+#Picker QCheckBox
+{
+		color: white;
+}

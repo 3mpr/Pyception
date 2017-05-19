@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Written the 10/03/2017 as a part of the TobiiStatistics package
+Written the 10/03/2017 as a part of the Perception package
 by Florian Indot <florian.indot@gmail.com>
 
 Updated the 13/03/2017
@@ -30,13 +30,13 @@ class Interpret(object):
     Package entrypoint, encapsulates most of the other classes methods
     within simple method facilities.
     """
-    logger = logging.getLogger("TobiiStatistics")
+    logger = logging.getLogger("Perception")
 
     # ------------------------------------------------------------------------------------------- MAGIC
     def __init__(self, dual=True):
         # type: (dual) -> bool
         self.log_scheme = {"class": self.__class__.__name__}
-        log_format = "%(asctime)-10s TobiiStatistics : %(message)s"
+        log_format = "%(asctime)-10s Perception : %(message)s"
         logging.basicConfig(format=log_format)
         self.logger.setLevel(20)
 

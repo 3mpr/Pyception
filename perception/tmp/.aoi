@@ -1,0 +1,212 @@
+AOIS:
+  - concerns: all
+    top_left:
+      x: 0
+      y: 0
+    bottom_right:
+      x: 768
+      y: 1080
+
+  - concerns: all
+    top_left:
+      x: 1152
+      y: 0
+    bottom_right:
+      x: 1920
+      y: 1080
+
+  - concerns: "Cour Recre[0-9]*"
+    top_left:
+      x: 240
+      y: 29
+    bottom_right:
+      x: 882
+      y: 700
+
+  - concerns: "Cour Recre[0-9]*"
+    top_left:
+      x: 1183
+      y: 159
+    bottom_right:
+      x: 1609
+      y: 975
+
+  - concerns: "Cour Recre[0-9]*"
+    top_left:
+      x: 114
+      y: 804
+    bottom_right:
+      x: 192
+      y: 946
+
+  - concerns: "Cour Recre[0-9]*"
+    top_left:
+      x: 476
+      y: 123
+    bottom_right:
+      x: 555
+      y: 265
+
+  - concerns: "Cour Recre[0-9]*"
+    top_left:
+      x: 1463
+      y: 191
+    bottom_right:
+      x: 1538
+      y: 336
+
+  - concerns: "Cour Recre[0-9]*"
+    top_left:
+      x: 1712
+      y: 818
+    bottom_right:
+      x: 1788
+      y: 964
+
+  - concerns: "Plage[0-9]*"
+    top_left:
+      x: 1305
+      y: 429
+    bottom_right:
+      x: 1749
+      y: 724
+
+  - concerns: "Plage[0-9]*"
+    top_left:
+      x: 110
+      y: 382
+    bottom_right:
+      x: 564
+      y: 695
+
+  - concerns: "Plage[0-9]*"
+    top_left:
+      x: 129
+      y: 598
+    bottom_right:
+      x: 200
+      y: 715
+
+  - concerns: "Plage[0-9]*"
+    top_left:
+      x: 540
+      y: 733
+    bottom_right:
+      x: 611
+      y: 850
+
+  - concerns: "Plage[0-9]*"
+    top_left:
+      x: 1316
+      y: 479
+    bottom_right:
+      x: 1387
+      y: 596
+
+  - concerns: "Plage[0-9]*"
+    top_left:
+      x: 1625
+      y: 693
+    bottom_right:
+      x: 1696
+      y: 808
+
+  - concerns: "Foot[0-9]*"
+    top_left:
+      x: 466
+      y: 354
+    bottom_right:
+      x: 746
+      y: 689
+
+  - concerns: "Foot[0-9]*"
+    top_left:
+      x: 201
+      y: 708
+    bottom_right:
+      x: 272
+      y: 825
+
+  - concerns: "Foot[0-9]*"
+    top_left:
+      x: 364
+      y: 582
+    bottom_right:
+      x: 435
+      y: 705
+
+  - concerns: "Foot[0-9]*"
+    top_left:
+      x: 1301
+      y: 158
+    bottom_right:
+      x: 1372
+      y: 275
+
+  - concerns: "Foot[0-9]*"
+    top_left:
+      x: 1641
+      y: 175
+    bottom_right:
+      x: 1711
+      y: 292
+
+  - concerns: "Foot[0-9]*"
+    top_left:
+      x: 1349
+      y: 351
+    bottom_right:
+      x: 1619
+      y: 685
+
+# ---------------------------------------------------------------------------------------------------------------- REPAS
+
+  - concerns: "Repas[0-9]*"
+    top_left:
+      x: 132
+      y: 208
+    bottom_right:
+      x: 749
+      y: 813
+
+  - concerns: "Repas[0-9]*"
+    top_left:
+      x: 1133
+      y: 211
+    bottom_right:
+      x: 1750
+      y: 817
+
+# CHARLIES
+
+  - concerns: "Repas[0-9]*"
+    top_left:
+      x: 604
+      y: 293
+    bottom_right:
+      x: 700
+      y: 440
+
+  - concerns: "Repas[0-9]*"
+    top_left:
+      x: 624
+      y: 553
+    bottom_right:
+      x: 721
+      y: 740
+
+  - concerns: "Repas[0-9]*"
+    top_left:
+      x: 1155
+      y: 504
+    bottom_right:
+      x: 1251
+      y: 664
+
+  - concerns: "Repas[0-9]*"
+    top_left:
+      x: 1408
+      y: 216
+    bottom_right:
+      x: 1500
+      y: 360

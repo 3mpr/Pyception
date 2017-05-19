@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Written the 12/03/2017 as a part of the TobiiStatistics package
+Written the 12/03/2017 as a part of the Perception package
 by Florian Indot <florian.indot@gmail.com>
 
 Last update: 13/03/2017
@@ -20,7 +20,7 @@ class Subject(object):
     """
     TODO
     """
-    logger = logging.getLogger("TobiiStatistics")
+    logger = logging.getLogger("Perception")
 
 # ------------------------------------------------------------------------------------------- MAGIC
     def __init__(self, gaze_data, gaze_data_factory, chunks=None):
