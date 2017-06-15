@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
+
 """
-| Part of the **Perception** package.
-|
-| **created**: 14.03.2017
-| **author**: Florian Indot <florian.indot@gmail.com>
-| **last updated**: 08.06.2017
+Part of the **PyCeption** package.
+
+:Version: 1
+:Authors: - Florian Indot
+:Contact: florian.indot@gmail.com
+:Date: 13.06.2017
+:Revision: 10
+:Copyright: MIT License
 """
 
 import csv
@@ -15,6 +19,7 @@ import random
 
 from .pattern.Visited import Visited
 from .pattern.VisitorInterface import VisitorInterface
+
 
 class Transaction(Visited):
     """
@@ -27,8 +32,8 @@ class Transaction(Visited):
 
     class Row(object):
         """
-        Transaction row definition. Implemented as both an index and associative
-        accessible array.
+        Transaction row definition. Implemented as both an index and
+        associative accessible array.
         """
         def __init__(self, table, headers):
             self._table = list()

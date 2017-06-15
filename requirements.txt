@@ -1,3 +1,6 @@
 PyCeption
 overload>=1.1
 pysqlite>=2.8.3
+numpy>=1.11.2
+pandas>= 0.20.2
+scipy>=0.19.0

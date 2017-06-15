@@ -19,6 +19,7 @@ from os.path import dirname, join, abspath
 
 import sqlite3
 from overload import overload
+from pandas import DataFrame
 
 
 class Repository(object):
@@ -144,7 +145,7 @@ class Repository(object):
             self._transaction_count = 0
 
     @overload
-    def read(self, constraints: dict, table: str) -> list:
+    def read(self, constraints: dict, table: str) -> DataFrame:
         """
         Pulls the records corresponding to the :constraints: dictionnary from
         the table :table:.
@@ -171,7 +172,7 @@ class Repository(object):
         query = "SELECT * FROM {0} WHERE {1};".format(table, query_constraints)
         cursor = self.db_conn.execute(query)
 
-        return [dict(cell) for cell in cursor.fetchall()]
+        return DataFrame([dict(cell) for cell in cursor.fetchall()])
 
     @read.add
     def read(self, table: str) -> list:
@@ -188,9 +189,10 @@ class Repository(object):
 
         cursor = self.db_conn.execute("SELECT * FROM {0};".format(table))
 
-        return [dict(cell) for cell in cursor.fetchall()]
+        return DataFrame([dict(cell) for cell in cursor.fetchall()])
 
-    def update(self, updates: dict, constraints: dict, table: str) -> None:
+    def update(self, updates: dict, constraints: dict, table: str,
+               precommit: bool = True) -> None:
         """
         Updates the record(s) that meet the :constraints: constraints with the
         :updates: values.
@@ -201,11 +203,14 @@ class Repository(object):
                             selection. Set to empty {} to update the whole
                             table content.
         :param table:       The table name
+        :param precommit:   Whether to commit before the update or not. Default
+                            to true.
         :type updates:      dict
         :type constraints:  dict
         :type table:        str
         """
-        self._read_guard()
+        if precommit:
+            self._read_guard()
 
         query_constraints = ""
         cpt = 0
