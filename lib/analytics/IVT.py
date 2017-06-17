@@ -6,7 +6,7 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 13.06.2017
+:Date: 15.06.2017
 :Revision: 3
 :Copyright: MIT License
 """
@@ -15,6 +15,32 @@ import math
 import numpy as np
 from pandas import DataFrame
 import scipy.ndimage.filters as filters
+
+
+def circle_matrix(self, r: int, gradient: bool = False) -> np.ndarray:
+    """
+    Creates a disc matrix with the given **r** radius.
+
+    :param r:   The disc radius.
+    :type r:    int
+    :return:    The computed gradient disc matrix.
+    :rtype:     np.ndarray
+    """
+    if gradient:
+        grd = np.arange(0., 1. + 1./r, 1./r)
+    else:
+        grd = np.ones(r)
+    cpt = r * 2 + 1
+    retval = np.zeros((cpt, cpt))
+    for i in range(cpt):
+        for j in range(cpt):
+            di = r + 1 - i
+            dj = r + 1 - j
+            delta = math.sqrt(pow(di, 2) + pow(dj, 2))
+            if delta > r:
+                delta = len(grd) - 1
+            retval[i-1, j-1] = 1 - grd[int(delta)]
+    return retval
 
 
 class Point(object):
@@ -31,6 +57,12 @@ class Point(object):
 
         return math.sqrt(pow(dis_x, 2) + pow(dis_y, 2))
 
+    def __add__(self, other):
+        return Point(self.x + other.x, self.y + other.y)
+
+    def __abs__(self):
+        return Point(abs(self.x), abs(self.y))
+
 
 class IVT(object):
 
@@ -43,12 +75,12 @@ class IVT(object):
         :type threshold: float
         """
         self.threshold = threshold
-        self.mask = np.ogrid[-threshold:threshold+1, -threshold:threshold+1]
+        self.kernel = circle_matrix(80, True)
 
-    def velocity(self, points: list) -> list:
+    def speed(self, points: list) -> dict:
         """
-        Computes a set of velocities from the given timed coordinates
-        dictionnary.
+        Computes the speeds and fixation from the given timed coordinates
+        dictionnary. This method trim the first element of the list.
 
         :param points:  A list of dictionnaries. The key/value format expected
                         is: {
@@ -57,11 +89,9 @@ class IVT(object):
                             'y': float or str
                         }
         :type points:   list
-        :return:        The len(points) -1 list of velocities
-        :rtype:         list
+        :return:        The first element of the list.
+        :rtype:         dict
         """
-        velocities = list()
-
         for i in range(len(points)):
             if i == 0:
                 continue
@@ -71,43 +101,19 @@ class IVT(object):
             t = abs(float(points[i]["timestamp"])
                     - float(points[i-1]["timestamp"]))
             v = d / t
-            velocities.append(v)
+            points[i]["speed"] = v
+            points[i]["fixation"] = v < self.threshold
 
-        return velocities
+        return points.pop(0)
 
-    def fixation(self, points: list, velocities: list) -> list:
-        """
-        Separates from the given velocities and points the fixations and
-        saccades, then collapse adjacent fixation points in groups before to
-        collapse those groups in gravity centers.
-
-        :param points:      A list of dictionnaries. The key/value format expected
-                            is: {
-                                'timestamp': float or str,
-                                'x': float or str,
-                                'y': float or str
-                            }
-        :param velocities:  A list of velocities in pixel/s.
-        :type points:       list
-        :type velocities:   list
-        :return:            The computed gravity centers of the found
-                            fixations.
-        :rtype:             list
-        """
-        # Guard
-        if len(points) != len(velocities):
-            raise Exception("Unrelated point to velocity lists."
-                            + " (points: {0}, velocities: {1})".format(
-                                len(points),
-                                len(velocities)
-                            ))
-
-        # Fixation packs
+    def collapse(self, points: list) -> list:
+        # TODO DOC
         fixation_packs = list()
         fixation_pack = list()
         in_pack = False
-        for i in range(len(velocities)):
-            if velocities[i] < self.threshold:
+
+        for point in points:
+            if point["fixation"]:
                 if not in_pack:
                     if len(fixation_pack) > 0:
                         fixation_packs.append(fixation_pack)
@@ -129,18 +135,21 @@ class IVT(object):
             g = Point(0.0, 0.0)
             for point in fixation_pack:
                 p = Point(float(point["x"]), float(point["y"]))
-                g.x += p.x
-                g.y += p.y
+                g += p
             g.x /= len(fixation_pack)
             g.y /= len(fixation_pack)
-            t = abs(float(fixation_pack[-1]["timestamp"])
-                    - float(fixation_pack[0]["timestamp"]))
-            gravity_points.append({'x': g.x, 'y': g.y, 't': t})
+            weight = abs(float(fixation_pack[-1]["timestamp"])
+                         - float(fixation_pack[0]["timestamp"]))
+            gravity_points.append({
+                'x': g.x,
+                'y': g.y,
+                'weight': weight
+            })
 
         # End
         return gravity_points
 
-    def matrix(self, gravities: list, max_x=1919, max_y=1079) -> np.ndarray:
+    def matrix(self, gravities: list, max_x=1920, max_y=1080) -> np.ndarray:
         """
         Places the **gravities** gravity points in a newly created **max_x** *
         **max_y** matrix of zeros.
@@ -156,12 +165,14 @@ class IVT(object):
         """
         base = np.zeros((max_y, max_x))
         for point in gravities:
-            if float(point["x"]) > max_x or float(point["y"]) > max_y:
+            if float(point["x"]) > max_x - 1 or \
+               float(point["y"]) > max_y -1:
                 continue
-            base[int(point["y"]), int(point["x"])] = point["t"]
+            base[int(point["y"]), int(point["x"])] = point["weight"]
         return base
 
-    def convolve(self, matrix: np.ndarray, size: int) -> np.ndarray:
+    def convolve(self, matrix: np.ndarray, kernel=None) -> np.ndarray:
+        # TODO DOC
         """
         Operate a matrix convolution with a **size** radius gradient disc
         kernel on the given **matrix** matrix.
@@ -169,34 +180,8 @@ class IVT(object):
         :param matrix:  The fixation-holder matrix.
         :param size:    The radius size in pixel of the circle.
         :type matrix:   np.ndarray
-        :type size:     int
         :return:        The convolution result.
         :rtype:         np.ndarray
-
-        .. warning::    This operation can be computationally expensive with
-                        large radius.
         """
-        kernel = self._circle(size)
+        kernel = self.kernel if kernel is None else kernel
         return filters.convolve(matrix, kernel, mode='constant')
-
-    def _circle(self, r: int) -> np.ndarray:
-        """
-        Creates a gradient disc matrix with the given **r** radius.
-
-        :param r:   The disc radius.
-        :type r:    int
-        :return:    The computed gradient disc matrix.
-        :rtype:     np.ndarray
-        """
-        grd = np.arange(0., 1. + 1./r, 1./r)
-        cpt = r * 2 + 1
-        retval = np.zeros((cpt, cpt))
-        for i in range(cpt):
-            for j in range(cpt):
-                di = r + 1 - i
-                dj = r + 1 - j
-                delta = math.sqrt(pow(di, 2) + pow(dj, 2))
-                if delta > r:
-                    delta = len(grd) - 1
-                retval[i-1, j-1] = 1 - grd[int(delta)]
-        return retval

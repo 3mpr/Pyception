@@ -1,5 +1,6 @@
 import os
-import PyCeption.conf as conf
+import lib.conf as conf
+import lib as pct
 
 def bootstrap():
     """
@@ -7,5 +8,6 @@ def bootstrap():
     """
     if not os.path.isdir(conf.workdir):
         os.makedirs(conf.workdir)
-    r = Repository(conf.db_file)
-    del r
+    return pct.Repository(conf.db_file)
+
+repo = bootstrap()

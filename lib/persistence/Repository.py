@@ -145,7 +145,7 @@ class Repository(object):
             self._transaction_count = 0
 
     @overload
-    def read(self, constraints: dict, table: str) -> DataFrame:
+    def read(self, constraints: dict, table: str) -> list:
         """
         Pulls the records corresponding to the :constraints: dictionnary from
         the table :table:.
@@ -172,7 +172,7 @@ class Repository(object):
         query = "SELECT * FROM {0} WHERE {1};".format(table, query_constraints)
         cursor = self.db_conn.execute(query)
 
-        return DataFrame([dict(cell) for cell in cursor.fetchall()])
+        return [dict(cell) for cell in cursor.fetchall()]
 
     @read.add
     def read(self, table: str) -> list:
@@ -189,7 +189,7 @@ class Repository(object):
 
         cursor = self.db_conn.execute("SELECT * FROM {0};".format(table))
 
-        return DataFrame([dict(cell) for cell in cursor.fetchall()])
+        return [dict(cell) for cell in cursor.fetchall()]
 
     def update(self, updates: dict, constraints: dict, table: str,
                precommit: bool = True) -> None:
