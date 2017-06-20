@@ -11,11 +11,17 @@ Part of the **PyCeption** package.
 :Copyright: MIT License
 """
 
+import os
+import time
+
 import lib as pct
+from lib.utils import log, progress, Level, bold
+from lib.conf import db_file, analytics_dir
+
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
-from lib.conf import db_file, analytics_dir
+from overload import *
+
 
 class Subject(object):
 
@@ -42,58 +48,77 @@ class Subject(object):
 
 # --------------------------------------------------------------------- METHODS
 
-    def analyze(self) -> None:
-        print("Retreiving {0} experiments descriptions...".format(self.name))
-        experiments = self.repository.read({
-                'subject': self.id
-        }, "experiments")
-        print("Done.")
+    @overload
+    def analyze(self) -> list:
+        log(bold("Beginning experiments analysis..."), Level.INFORMATION)
 
+        experiments = progress(
+            "Retreiving %s experiments descriptions..." % bold(self.name),
+            (self.repository.read, {
+                'constraints': {'subject': self.id},
+                'table': "experiments"
+            }), " Done."
+        )
 
-        print("\n!! BEGINNING EXPERIMENTS ANALYSIS !!")
         analyzed_experiments = list()
-        for experiment in experiments:
-            print("\nRetreiving experiment {0} data.".format(
-                experiment["name"])
-            )
-            xp_data = self.repository.read({
-                'experiment': experiment["id"]
-            }, "data")
-            print("Done.")
-            if len(xp_data) < 2:
-                print("\tData is incomplete, skipping.")
-                continue
-            print("\tComputing general values...")
-            t = abs(xp_data[-1]["timestamp"] - xp_data[0]["timestamp"])
-            f = len(xp_data) / t
-            ft = self.frequence_over_time(experiment["id"])
-            v = self.ivt.velocity(xp_data)
-            xp_data.pop(0)
-            g = self.ivt.fixation(xp_data, v)
-            print("\tDone.")
-            print("\tComputing fixation matrix...")
-            m = self.ivt.matrix(g)
-            print("\tDone.")
-            print("\tComputing matrix convolution...")
-            r = self.ivt.convolve(m)
-            print("\tDone.")
+        for xp in experiments:
+            res = self.analyze(xp)
+            if res is not None:
+                analyzed_experiments.append(res)
 
-            print("\tRegistering dataset...")
+        log("Experiments analysis completed successfully.", Level.INFORMATION)
+        return analyzed_experiments
+
+    @analyze.add
+    def analyze(self, experiment: dict) -> dict:
+        try:
+            start_t = time.time()
+
+            xp_data = progress(
+                "Retreiving experiment %s data..." % bold(experiment["name"]),
+                (self.repository.read, {
+                    'constraints': {'experiment': experiment["id"]},
+                    'table': "data"
+                }), " Done."
+            )
+
+            if len(xp_data) < 2:
+                log("Inconsistent data, skipping.", Level.WARNING)
+                return
+
+            log("Computing general values...", Level.INFORMATION, "")
+            t = abs(xp_data[-1]["timestamp"] - xp_data[0]["timestamp"])
+            ft = self.frequence_over_time(experiment["id"])
+            _ = self.ivt.speed(xp_data)
+            g = self.ivt.collapse(xp_data)
+            log(" Done.", Level.DONE)
+
+            log("Computing fixation matrix...", Level.INFORMATION, "")
+            m = self.ivt.matrix(g)
+            log(" Done.", Level.DONE)
+
+            log("Computing matrix convolution...", Level.INFORMATION, "")
+            r = self.ivt.convolve(m)
+            log(" Done.", Level.DONE)
+
+            log("Registering dataset...", Level.INFORMATION, "")
             # TODO DATAFRAME
             experiment["length"] = t
-            analyzed_experiments.append({
+            xp = {
                 'name': experiment["name"],
                 'definition': list(experiment.items()),
-                'raw': xp_data,
+                'raw_data': xp_data,
                 'frequency_over_time': ft,
-                'velocities': v,
                 'gravity_points': g,
                 'heatmap': r
-            })
-            print("\tDone.")
+            }
+            log(" Done ({0:.2f}s).".format(time.time() - start_t), Level.DONE)
 
-        print("Experiments analysis completed successfully.")
-        return analyzed_experiments
+            return xp
+
+        except Exception as e:
+            log(e, Level.EXCEPTION)
+            raise e
 
     def analyze_and_save(self):
         results = self.analyze()

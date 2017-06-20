@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
+# note PCI passthrough
+# pci-stub.ids=10de:13c2,10de:0fbb,8086:0c01
+
 """
 Part of the **PyCeption** package.
 
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 15.06.2017
+:Date: 16.06.2017
 :Revision: 3
 :Copyright: MIT License
 """
@@ -16,8 +19,10 @@ import numpy as np
 from pandas import DataFrame
 import scipy.ndimage.filters as filters
 
+from lib.utils import log, bold, Level
 
-def circle_matrix(self, r: int, gradient: bool = False) -> np.ndarray:
+
+def circle_matrix(r: int, gradient: bool = False) -> np.ndarray:
     """
     Creates a disc matrix with the given **r** radius.
 
@@ -26,20 +31,27 @@ def circle_matrix(self, r: int, gradient: bool = False) -> np.ndarray:
     :return:    The computed gradient disc matrix.
     :rtype:     np.ndarray
     """
-    if gradient:
-        grd = np.arange(0., 1. + 1./r, 1./r)
-    else:
-        grd = np.ones(r)
-    cpt = r * 2 + 1
-    retval = np.zeros((cpt, cpt))
-    for i in range(cpt):
-        for j in range(cpt):
-            di = r + 1 - i
-            dj = r + 1 - j
-            delta = math.sqrt(pow(di, 2) + pow(dj, 2))
-            if delta > r:
-                delta = len(grd) - 1
-            retval[i-1, j-1] = 1 - grd[int(delta)]
+    log("Building {0}n ray kernel matrix...".format(bold(str(r))),
+        Level.INFORMATION, "")
+    try:
+        if gradient:
+            grd = np.arange(0., 1. + 1./r, 1./r)
+        else:
+            grd = np.ones(r)
+        cpt = r * 2 + 1
+        retval = np.zeros((cpt, cpt))
+        for i in range(cpt):
+            for j in range(cpt):
+                di = r + 1 - i
+                dj = r + 1 - j
+                delta = math.sqrt(pow(di, 2) + pow(dj, 2))
+                if delta > r:
+                    delta = len(grd) - 1
+                retval[i-1, j-1] = 1 - grd[int(delta)]
+    except Exception as e:
+        log(e, Level.EXCEPTION)
+        raise e
+    log(" Done.", Level.DONE)
     return retval
 
 
@@ -119,7 +131,7 @@ class IVT(object):
                         fixation_packs.append(fixation_pack)
                     fixation_pack = list()
                     in_pack = True
-                fixation_pack.append(points[i])
+                fixation_pack.append(point)
             elif in_pack:
                 if len(fixation_pack) > 0:
                     fixation_packs.append(fixation_pack)
@@ -166,12 +178,13 @@ class IVT(object):
         base = np.zeros((max_y, max_x))
         for point in gravities:
             if float(point["x"]) > max_x - 1 or \
-               float(point["y"]) > max_y -1:
+               float(point["y"]) > max_y - 1:
                 continue
             base[int(point["y"]), int(point["x"])] = point["weight"]
         return base
 
-    def convolve(self, matrix: np.ndarray, kernel=None) -> np.ndarray:
+    def convolve(self, matrix: np.ndarray,
+                 kernel: np.ndarray = None) -> np.ndarray:
         # TODO DOC
         """
         Operate a matrix convolution with a **size** radius gradient disc
@@ -184,4 +197,4 @@ class IVT(object):
         :rtype:         np.ndarray
         """
         kernel = self.kernel if kernel is None else kernel
-        return filters.convolve(matrix, kernel, mode='constant')
+        return filters.convolve(matrix, kernel, mode = 'constant')
