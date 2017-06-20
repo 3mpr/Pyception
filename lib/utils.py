@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 import lib.pattern as pattern
+from time import gmtime, strftime
 
 
 RESET = "\033[0m"
@@ -12,6 +13,7 @@ class Level(Enum):
     ERROR = 2
     EXCEPTION = 3
     DONE = 4
+    FAILED = 7
     CR_MESSAGE = 5
 
 
@@ -76,26 +78,34 @@ class Logger(object):
         if lvl == Level.INFORMATION:
             fmt = str(Style.BOLD.value) + str(Color.BLUE.value) + "Info:"
         elif lvl == Level.WARNING:
-            fmt = str(Style.BOLD.value) + str(Color.ORANGE.value) + "Warning:"
+            fmt = str(Style.BOLD.value) + str(Color.ORANGE.value) \
+                      + "Warning:"
         elif lvl == Level.ERROR:
             fmt = str(Style.BOLD.value) + str(Color.ORANGE.value) + "Error:"
         elif lvl == Level.EXCEPTION:
             fmt = "\n" + str(Style.BOLD.value) + str(Background.RED.value) \
                   + str(Color.WHITE.value) + "EXCEPTION:"
         elif lvl == Level.DONE:
-            print(str(Style.BOLD.value) + str(Color.GREEN.value) + text
+            print(str(Style.BOLD.value) + str(Color.GREEN.value) + text + " ✔"
+                  + str(RESET))
+            return
+        elif lvl == Level.FAILED:
+            print(str(Style.BOLD.value) + str(Color.ORANGE.value) + text + " ✘"
                   + str(RESET))
             return
         fmt += str(RESET)
 
-        print(fmt + " {0}".format(text), end=linesep)
+        output = strftime("[%m-%d %H:%M:%S]", gmtime()) + " - " + fmt + " " \
+                                                        + text
+        output = output.ljust(110)
+        print(output, end=linesep)
 
 
 logger = Logger()
 log = logger.log
 
 
-def progress(pre: str, action: tuple, post: str = "Done.",
+def progress(pre: str, action: tuple, post: str = " Done",
              raise_ex: bool = False) -> object:
     """
     TODO

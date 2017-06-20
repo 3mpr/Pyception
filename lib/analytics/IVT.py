@@ -31,7 +31,7 @@ def circle_matrix(r: int, gradient: bool = False) -> np.ndarray:
     :return:    The computed gradient disc matrix.
     :rtype:     np.ndarray
     """
-    log("Building {0}n ray kernel matrix...".format(bold(str(r))),
+    log("Building {0}n ray kernel matrix...".format(str(r)),
         Level.INFORMATION, "")
     try:
         if gradient:
@@ -51,7 +51,7 @@ def circle_matrix(r: int, gradient: bool = False) -> np.ndarray:
     except Exception as e:
         log(e, Level.EXCEPTION)
         raise e
-    log(" Done.", Level.DONE)
+    log(" Done", Level.DONE)
     return retval
 
 
