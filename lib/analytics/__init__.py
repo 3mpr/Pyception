@@ -1,8 +1,5 @@
+from .plan2d import Point, Area, matrix, circle_matrix
+from .FixationDetector import FixationDetector
 from .IVT import IVT
-from .Subject import *
-
-from lib.conf import analytics_dir
-import os
-
-if not os.path.isdir(analytics_dir):
-    os.makedirs(analytics_dir)
+from .Subject import Subject
+from .Experiment import Experiment

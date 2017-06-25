@@ -1,1 +1,0 @@
-SELECT * FROM {0} WHERE id=?;

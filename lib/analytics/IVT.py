@@ -9,20 +9,21 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 16.06.2017
-:Revision: 3
+:Date: 22.06.2017
+:Revision: 4
 :Copyright: MIT License
 """
 
 import math
 import numpy as np
-from pandas import DataFrame
 import scipy.ndimage.filters as filters
 
-from lib.utils import log, bold, Level
+from lib import log, Level, inheritdoc
 
+from .FixationDetector import FixationDetector
+from .plan2d import Point
 
-def circle_matrix(r: int, gradient: bool = False) -> np.ndarray:
+def circle_matrix(radius: int, gradient: bool = False) -> np.ndarray:
     """
     Creates a disc matrix with the given **r** radius.
 
@@ -31,21 +32,19 @@ def circle_matrix(r: int, gradient: bool = False) -> np.ndarray:
     :return:    The computed gradient disc matrix.
     :rtype:     np.ndarray
     """
-    log("Building {0}n ray kernel matrix...".format(str(r)),
-        Level.INFORMATION, "")
     try:
         if gradient:
-            grd = np.arange(0., 1. + 1./r, 1./r)
+            grd = np.arange(0., 1. + 1./radius, 1./radius)
         else:
-            grd = np.ones(r)
-        cpt = r * 2 + 1
+            grd = np.ones(radius)
+        cpt = radius * 2 + 1
         retval = np.zeros((cpt, cpt))
         for i in range(cpt):
             for j in range(cpt):
-                di = r + 1 - i
-                dj = r + 1 - j
-                delta = math.sqrt(pow(di, 2) + pow(dj, 2))
-                if delta > r:
+                delta_i = radius + 1 - i
+                delta_j = radius + 1 - j
+                delta = math.sqrt(pow(delta_i, 2) + pow(delta_j, 2))
+                if delta > radius:
                     delta = len(grd) - 1
                 retval[i-1, j-1] = 1 - grd[int(delta)]
     except Exception as e:
@@ -55,30 +54,9 @@ def circle_matrix(r: int, gradient: bool = False) -> np.ndarray:
     return retval
 
 
-class Point(object):
-    """
-    Simple carthesian coordinates class.
-    """
-    def __init__(self, x: float, y: float) -> None:
-        self.x = x
-        self.y = y
+class IVT(FixationDetector):
 
-    def distance(self, b) -> float:
-        dis_x = abs(self.x - b.x)
-        dis_y = abs(self.y - b.y)
-
-        return math.sqrt(pow(dis_x, 2) + pow(dis_y, 2))
-
-    def __add__(self, other):
-        return Point(self.x + other.x, self.y + other.y)
-
-    def __abs__(self):
-        return Point(abs(self.x), abs(self.y))
-
-
-class IVT(object):
-
-    def __init__(self, threshold: float = 450.0) -> None:
+    def __init__(self, threshold: float = 450.0, kernel_ray: int = 80) -> None:
         """
         Class constructor.
 
@@ -87,7 +65,13 @@ class IVT(object):
         :type threshold: float
         """
         self.threshold = threshold
-        self.kernel = circle_matrix(80, True)
+        log("Building {0}n ray kernel matrix...".format(str(kernel_ray)),
+            Level.INFORMATION, "")
+        self.kernel = circle_matrix(kernel_ray, True)
+
+    def fixation(self, points: list) -> list:
+        _ = self.speed(points)
+        return self.collapse(points)
 
     def speed(self, points: list) -> dict:
         """
@@ -104,22 +88,40 @@ class IVT(object):
         :return:        The first element of the list.
         :rtype:         dict
         """
-        for i in range(len(points)):
+        for i, cell in enumerate(points):
             if i == 0:
                 continue
             past_p = Point(float(points[i-1]["x"]), float(points[i-1]["y"]))
-            cur_p = Point(points[i]["x"], points[i]["y"])
-            d = cur_p.distance(past_p)
-            t = abs(float(points[i]["timestamp"])
-                    - float(points[i-1]["timestamp"]))
-            v = d / t
-            points[i]["speed"] = v
-            points[i]["fixation"] = v < self.threshold
+            cur_p = Point(cell["x"], cell["y"])
+            dist = cur_p.distance(past_p)
+            time = abs(float(cell["timestamp"])
+                       - float(points[i-1]["timestamp"]))
+            speed = dist / time
+            points[i]["speed"] = speed
+            points[i]["fixation"] = speed < self.threshold
 
         return points.pop(0)
 
     def collapse(self, points: list) -> list:
-        # TODO DOC
+        """
+        Analyzes within the given set of data the fixation status of every
+        record. Consecutive fixations are grouped together in sets.
+        A gravity center is then computed for each set.
+
+        This method must be called after **speed**.
+
+        :param points:  :param points:  A list of dictionnaries. The key/value
+                        format expected is: {
+                            'timestamp': float or str,
+                            'x': float or str,
+                            'y': float or str,
+                            'speed': float,
+                            'fixation': bool
+                        }
+        :type points:   list
+        :return:        The list of gravity points
+        :rtype:         list
+        """
         fixation_packs = list()
         fixation_pack = list()
         in_pack = False
@@ -127,38 +129,37 @@ class IVT(object):
         for point in points:
             if point["fixation"]:
                 if not in_pack:
-                    if len(fixation_pack) > 0:
+                    if fixation_pack:
                         fixation_packs.append(fixation_pack)
                     fixation_pack = list()
                     in_pack = True
                 fixation_pack.append(point)
             elif in_pack:
-                if len(fixation_pack) > 0:
+                if fixation_pack:
                     fixation_packs.append(fixation_pack)
                     fixation_pack = list()
                     in_pack = False
         # Ended on a fixation
-        if len(fixation_pack) > 0:
+        if fixation_pack:
             fixation_packs.append(fixation_pack)
 
         # Fixation pack collapsing
         gravity_points = list()
         for fixation_pack in fixation_packs:
-            g = Point(0.0, 0.0)
-            for point in fixation_pack:
-                p = Point(float(point["x"]), float(point["y"]))
-                g += p
-            g.x /= len(fixation_pack)
-            g.y /= len(fixation_pack)
+            grav = Point(0.0, 0.0)
+            for cell in fixation_pack:
+                point = Point(cell["x"], cell["y"])
+                grav += point
+            grav.x /= len(fixation_pack)
+            grav.y /= len(fixation_pack)
             weight = abs(float(fixation_pack[-1]["timestamp"])
                          - float(fixation_pack[0]["timestamp"]))
             gravity_points.append({
-                'x': g.x,
-                'y': g.y,
+                'x': grav.x,
+                'y': grav.y,
                 'weight': weight
             })
 
-        # End
         return gravity_points
 
     def matrix(self, gravities: list, max_x=1920, max_y=1080) -> np.ndarray:
@@ -185,7 +186,6 @@ class IVT(object):
 
     def convolve(self, matrix: np.ndarray,
                  kernel: np.ndarray = None) -> np.ndarray:
-        # TODO DOC
         """
         Operate a matrix convolution with a **size** radius gradient disc
         kernel on the given **matrix** matrix.
@@ -197,4 +197,4 @@ class IVT(object):
         :rtype:         np.ndarray
         """
         kernel = self.kernel if kernel is None else kernel
-        return filters.convolve(matrix, kernel, mode = 'constant')
+        return filters.convolve(matrix, kernel, mode='constant')

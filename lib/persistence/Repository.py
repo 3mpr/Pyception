@@ -6,20 +6,18 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 12.06.2017
+:Date: 25.06.2017
 :Status: dev
 :Copyright: MIT License
 """
 
 from lib import pattern
 from .ResourceCollection import ResourceCollection as RC
-from lib import Transaction
 
 from os.path import dirname, join, abspath
 
 import sqlite3
 from overload import overload
-from pandas import DataFrame
 
 
 class Repository(object):
@@ -36,20 +34,7 @@ class Repository(object):
     db_conn = None
     sql_dir = join(dirname(abspath(__file__)), "sql")
 
-    CRUD = {
-        'create': RC(join(sql_dir, "create"), [".sql"]),
-        'read': RC(join(sql_dir, "read"), [".sql"]),
-        'update': RC(join(sql_dir, "update"), [".sql"]),
-        'delete': RC(join(sql_dir, "delete"), [".sql"])
-    }
-
-    schemas = RC(join(sql_dir, "schemas"), [".sql"])
-
-    cache = {
-        'table': "",
-        "query_args_len": 0,
-        'query': ""
-    }
+    schemas = RC(sql_dir, [".sql"])
 
     _transaction_count = 0
     commit_delay = 50
@@ -82,9 +67,11 @@ class Repository(object):
         """
         Sets up the database schemas.
         """
-        for f in self.schemas.list():
-            with open(f, "r") as schema:
-                self.db_conn.execute(schema.read().strip("\n"))
+        for fin in self.schemas.list():
+            with open(fin, "r") as schema:
+                query = schema.read().strip("\n")
+                print(query)
+                self.db_conn.execute(query)
         self.db_conn.commit()
 
     def drop(self, table: str = "") -> None:
@@ -104,36 +91,42 @@ class Repository(object):
         self.db_conn.commit()
 
     @overload
-    def create(self, row: list, table: str) -> int:
+    def create(self, values: dict, table: str) -> int:
         """
-        TODO CHANGE SIGNATURE
+        DOING
         """
-        if table == self.cache["table"] \
-           and len(row) == self.cache["query_args_len"]:
-            cursor = self.db_conn.execute(self.cache["query"], *row)
-        else:
-            with open(self.CRUD["create"].get(table), "r") as fin:
-                self.cache["query"] = fin.read().strip("\n")
-            cursor = self.db_conn.execute(self.cache["query"], *row)
+        query_labels = ""
+        query_keys = ""
+        query_values = list()
+        cpt = 0
+        for key in values:
+            if cpt > 0 and cpt < len(values):
+                query_labels += ", "
+                query_keys += ", "
+            query_labels += key
+            query_keys += "?"
+            query_values.append(values[key])
+            cpt += 1
 
-        self.cache["table"] = table
-        self.cache["query_args_len"] = len(row)
+        query = "INSERT INTO {0} ({1}) VALUES ({2});".format(
+            table, query_labels, query_keys
+        )
+
+        print(query)
+        cursor = self.db_conn.execute(query, query_values)
 
         self._commit()
         return cursor.lastrowid
 
     @create.add
-    def create(self, trs: Transaction, table: str) -> int:
+    def create(self, array: list, table: str) -> int:
         """
-        TODO CHANGE  SIGNATURE AND SEE IF OVERLOAD IS NECESSARY
+        DONE
         """
-        with open(self.CRUD["create"].get(table), "r") as fin:
-            query = fin.read().strip("\n")
-            for row in trs:
-                cursor = self.db_conn.execute(query, [t for t in row.content])
-
-        self._commit()
-        return cursor.lastrowid
+        lastrowid = -1
+        for row in array:
+            lastrowid = self.create(row, table)
+        return lastrowid
 
     def _read_guard(self) -> None:
         """
@@ -312,6 +305,8 @@ class Repository(object):
 
     @property
     def tables(self) -> list:
-        with open(self.CRUD["read"].get("tables"), "r") as fin:
-            cursor = self.db_conn.execute(fin.read())
+        cursor = self.db_conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table';"
+        )
+
         return [item for sublist in cursor.fetchall() for item in sublist]
