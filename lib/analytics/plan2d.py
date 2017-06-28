@@ -59,7 +59,7 @@ def matrix(points: list, max_x=1920, max_y=1080) -> np.ndarray:
         if float(point["x"]) > max_x - 1 or \
             float(point["y"]) > max_y - 1:
             continue
-        base[int(point["y"]), int(point["x"])] = point["weight"]
+        base[int(point["y"]), int(point["x"])] = point["time"]
     return base
 
 def circle_matrix(radius: int, gradient: bool = False) -> np.ndarray:
@@ -86,4 +86,3 @@ def circle_matrix(radius: int, gradient: bool = False) -> np.ndarray:
                 delta = len(grd) - 1
             retval[i-1, j-1] = 1 - grd[int(delta)]
     return retval
-

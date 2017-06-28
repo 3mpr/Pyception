@@ -9,53 +9,32 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 22.06.2017
+:Date: 28.06.2017
 :Revision: 4
 :Copyright: MIT License
 """
 
-import math
 import numpy as np
-import scipy.ndimage.filters as filters
 
 from lib import log, Level, inheritdoc
 
 from .FixationDetector import FixationDetector
-from .plan2d import Point
-
-def circle_matrix(radius: int, gradient: bool = False) -> np.ndarray:
-    """
-    Creates a disc matrix with the given **r** radius.
-
-    :param r:   The disc radius.
-    :type r:    int
-    :return:    The computed gradient disc matrix.
-    :rtype:     np.ndarray
-    """
-    try:
-        if gradient:
-            grd = np.arange(0., 1. + 1./radius, 1./radius)
-        else:
-            grd = np.ones(radius)
-        cpt = radius * 2 + 1
-        retval = np.zeros((cpt, cpt))
-        for i in range(cpt):
-            for j in range(cpt):
-                delta_i = radius + 1 - i
-                delta_j = radius + 1 - j
-                delta = math.sqrt(pow(delta_i, 2) + pow(delta_j, 2))
-                if delta > radius:
-                    delta = len(grd) - 1
-                retval[i-1, j-1] = 1 - grd[int(delta)]
-    except Exception as e:
-        log(e, Level.EXCEPTION)
-        raise e
-    log(" Done", Level.DONE)
-    return retval
+from .plan2d import Point, circle_matrix
 
 
+@inheritdoc
 class IVT(FixationDetector):
+    """
+    Implementation of the **Velocity-Threshold Identification** (I-VT)
+    algorithm. This algorithm separates saccades and fixations based on
+    their point-to-point velocities. Considering an arbitrary threshold,
+    the velocity profiles of saccadic eye movements show essentially two
+    distributions: low velocities for fixations (i.e., <100 deg/sec), and
+    high velocities (i.e., >300 deg/sec) for saccades.
 
+    .. seealso:: Identifying Fixations and Saccades in Eye-Tracking
+                 Protocols. Dario D. Salvucci, Joseph H. Goldberg, 2000
+    """
     def __init__(self, threshold: float = 450.0, kernel_ray: int = 80) -> None:
         """
         Class constructor.
@@ -152,12 +131,12 @@ class IVT(FixationDetector):
                 grav += point
             grav.x /= len(fixation_pack)
             grav.y /= len(fixation_pack)
-            weight = abs(float(fixation_pack[-1]["timestamp"])
-                         - float(fixation_pack[0]["timestamp"]))
+            time = abs(float(fixation_pack[-1]["timestamp"])
+                       - float(fixation_pack[0]["timestamp"]))
             gravity_points.append({
                 'x': grav.x,
                 'y': grav.y,
-                'weight': weight
+                'time': time
             })
 
         return gravity_points
@@ -181,20 +160,5 @@ class IVT(FixationDetector):
             if float(point["x"]) > max_x - 1 or \
                float(point["y"]) > max_y - 1:
                 continue
-            base[int(point["y"]), int(point["x"])] = point["weight"]
+            base[int(point["y"]), int(point["x"])] = point["time"]
         return base
-
-    def convolve(self, matrix: np.ndarray,
-                 kernel: np.ndarray = None) -> np.ndarray:
-        """
-        Operate a matrix convolution with a **size** radius gradient disc
-        kernel on the given **matrix** matrix.
-
-        :param matrix:  The fixation-holder matrix.
-        :param size:    The radius size in pixel of the circle.
-        :type matrix:   np.ndarray
-        :return:        The convolution result.
-        :rtype:         np.ndarray
-        """
-        kernel = self.kernel if kernel is None else kernel
-        return filters.convolve(matrix, kernel, mode='constant')

@@ -6,8 +6,8 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 25.06.2017
-:Revision: 3
+:Date: 28.06.2017
+:Revision: 4
 :Copyright: MIT License
 """
 
@@ -21,9 +21,6 @@ log = logger.log
 
 def progress(pre: str, action: tuple, post: str = " Done",
              raise_ex: bool = False) -> object:
-    """
-    TODO
-    """
     log(pre, Level.INFORMATION, "")
     retval = None
     try:
@@ -36,5 +33,10 @@ def progress(pre: str, action: tuple, post: str = " Done",
     log(post, Level.DONE)
     return retval
 
-def inheritdoc(method):
-    pass
+
+def inheritdoc(cls):
+    for base in inspect.getmro(cls):
+        if base.__doc__ is not None:
+            cls.__doc__ = base.__doc__
+            break
+    return cls

@@ -26,8 +26,8 @@ class Level(Enum):
     ERROR = 2
     EXCEPTION = 3
     DONE = 4
-    FAILED = 7
     CR_MESSAGE = 5
+    FAILED = 6
 
 
 class Color(Enum):
@@ -92,28 +92,39 @@ class Logger(object):
 
     def _print_unix(self, text: str = "", lvl: Level = Level.INFORMATION,
                     linesep: str = os.linesep):
-        fmt = ""
-        if lvl == Level.INFORMATION:
-            fmt = str(Style.BOLD.value) + str(Color.BLUE.value) + "Info:"
-        elif lvl == Level.WARNING:
-            fmt = str(Style.BOLD.value) + str(Color.ORANGE.value) \
-                      + "Warning:"
-        elif lvl == Level.ERROR:
-            fmt = str(Style.BOLD.value) + str(Color.ORANGE.value) + "Error:"
-        elif lvl == Level.EXCEPTION:
-            fmt = str(Style.BOLD.value) + str(Background.RED.value) \
-                  + str(Color.WHITE.value) + "EXCEPTION:"
-        elif lvl == Level.DONE:
-            print(str(Style.BOLD.value) + str(Color.GREEN.value) + text + " ✔"
-                  + str(RESET))
-            return
-        elif lvl == Level.FAILED:
-            print(str(Style.BOLD.value) + str(Color.ORANGE.value) + text + " ✘"
-                  + str(RESET))
-            return
-        fmt += str(RESET)
+        prefix = ""
+        suffix = ""
+        color = RESET
 
-        output = strftime("[%m-%d %H:%M:%S]", gmtime()) + " - " + fmt + " " \
-                                                        + text
-        output = output.ljust(110)
+        if lvl == Level.INFORMATION:
+            prefix = "Info :"
+            color = Color.BLUE.value
+        elif lvl == Level.WARNING:
+            prefix = "Warning :"
+            color = Color.ORANGE.value
+        elif lvl == Level.ERROR:
+            prefix = "Error :"
+            color = Color.RED.value
+        elif lvl == Level.EXCEPTION:
+            prefix = "EXCEPTION :"
+            color = Background.RED.value + Color.WHITE.value
+        elif lvl == Level.DONE:
+            suffix = " ✔"
+            color = Color.GREEN.value
+        elif lvl == Level.FAILED:
+            suffix = " ✘"
+            color = Color.ORANGE.value
+
+        message = "{bold}{color}{prefix} {text} {suffix}{reset}".format(
+            bold=Style.BOLD.value,
+            color=color,
+            prefix=prefix,
+            text=text,
+            suffix=suffix,
+            reset=RESET
+        )
+        if lvl is not Level.DONE and lvl is not Level.FAILED:
+            message = strftime("[%y-%m-%d %H:%M:%S] - ", gmtime()) + message
+        output = message.ljust(110)
+
         print(output, end=linesep)

@@ -6,7 +6,7 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 22.06.2017
+:Date: 28.06.2017
 :Revision: 3
 :Copyright: MIT License
 """
@@ -23,23 +23,30 @@ from lib import db_file, analytics_dir, log, progress, Level, Repository
 from .IVT import IVT
 from .Experiment import Experiment
 
-class Subject(object):
 
+class Subject(object):
+    """
+    This class is and experiments container and its **analyze** and **save**
+    methods are iterative wrappers over their Experiment method counterpart.
+
+    .. seealso:: Experiment
+    """
 # ------------------------------------------------------------------- VARIABLES
 
     db_file = db_file
     repository = Repository(db_file)
-    analytics_folder = analytics_dir
 
 # ----------------------------------------------------------------------- MAGIC
 
     def __init__(self, name: str) -> None:
         """
-        Class constructor.
+        Class constructor. Intializes important variables.
 
-        TODO
+        :param name:    The name of the subject.
+        :type name:     str
         """
         self.name = name
+        self.directory = os.path.join(analytics_dir, self.name)
         self.id = None
         self._control = None
 
@@ -50,6 +57,9 @@ class Subject(object):
 # --------------------------------------------------------------------- METHODS
 
     def _load(self):
+        """
+        Deferred class constructor, loads important values from the database.
+        """
         log("Retreiving subject %s description..." % self.name, linesep="")
         data = self.repository.read({'name': self.name}, "subjects")[0]
         if not data:
@@ -63,6 +73,10 @@ class Subject(object):
         self._control = data["control"] == 1
 
     def analyze(self) -> None:
+        """
+        Retreives this subject's experiments from the database before to
+        loop and analyze each of those.
+        """
         log("Beginning experiments analysis...", Level.INFORMATION)
 
         experiments = progress(
@@ -90,25 +104,11 @@ class Subject(object):
         log("Experiments analysis completed successfully.",
             Level.INFORMATION)
 
-    def analyze_and_save(self):
-        results = self.analyze()
-        root_dir = os.path.join(self.analytics_folder, self.name)
-        if not os.path.isdir(root_dir):
-            os.makedirs(root_dir)
-        print("\nSaving...")
-        for result in results:
-            xp_dir = os.path.join(root_dir, result["name"])
-            if not os.path.exists(xp_dir):
-                os.makedirs(xp_dir)
-
-            writer = pd.ExcelWriter(os.path.join(xp_dir, "resume.xlsx"))
-            keys = ["definition", "raw", "frequency_over_time",
-                    "gravity_points", "velocities"]
-            for key in keys:
-                pd.DataFrame(result[key]).to_excel(writer, key)
-            writer.save()
-
-            plt.imsave(os.path.join(xp_dir, "heatmap.png"), result["heatmap"])
-        print("Done")
+    def save(self):
+        """
+        Save every analyzed experiments.
+        """
+        for experiment in self.experiments:
+            experiment.save()
 
 # ------------------------------------------------------------------ PROPERTIES
