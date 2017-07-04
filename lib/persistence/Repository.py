@@ -6,7 +6,7 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 25.06.2017
+:Date: 04.07.2017
 :Status: dev
 :Copyright: MIT License
 """
@@ -22,40 +22,50 @@ from overload import overload
 
 class Repository(object):
     """
-    Database access layer representation. Exposes a simplistic API and
-    translate those calls into SQL queries.
+    Database access layer representation. Exposes a simplistic CRUD API and
+    performs underlying SQL queries.
 
-    :todo: the doc & class completion
+    To avoid expensive I/O operations, this class delays sql commits for an
+    arbitrary amount of queries. This arbitrary amount can be changed through
+    **Repository.commit_delay**.
+
+    This class metaclass is Singleton. As such, any object creation subsequent
+    to the first constructor call will not have any effect.
     """
 # ------------------------------------------------------------------- VARIABLES
 
     __metaclass__ = pattern.Singleton
 
     db_conn = None
-    sql_dir = join(dirname(abspath(__file__)), "sql")
-
-    schemas = RC(sql_dir, [".sql"])
 
     _transaction_count = 0
     commit_delay = 50
 
 # ----------------------------------------------------------------------- MAGIC
 
-    def __init__(self, db_file):
+    def __init__(self, db_file: str, schema_dir: str = join(
+        dirname(abspath(__file__)), "sql")
+    ) -> None:
         """
-        Class constructor. Initializes the database connection.
+        Initializes the database connection and the sql schema directory.
+
+        :param db_file:     The database file path.
+        :type db_file:      str
+        :param schema_dir:  The tables schema directory.
+        :type schema_dir:   str
         """
         self.db_conn = sqlite3.connect(db_file)
         self.db_conn.row_factory = sqlite3.Row
+        self.schemas = RC(schema_dir, [".sql"])
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
-        Class destructor. Commit remaining queries and close the connection.
+        Class destructor. Commits remaining queries and close the connection.
         """
         self.db_conn.commit()
         self.db_conn.close()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Returns this database dataset length.
         """
@@ -65,7 +75,7 @@ class Repository(object):
 
     def initialize(self) -> None:
         """
-        Sets up the database schemas.
+        Sets up the database schemas as specified in the schema_dir sql files.
         """
         for fin in self.schemas.list():
             with open(fin, "r") as schema:
@@ -93,7 +103,17 @@ class Repository(object):
     @overload
     def create(self, values: dict, table: str) -> int:
         """
-        DOING
+        Forges an INSERT query targeting the specified table from the given
+        dictionary. This method will not check for sql consistency. As such;
+        specified columns and values MUST respect the table schema.
+
+        :param values:  The key / value dictionary where the key is a table
+                        column and the value its value.
+        :type values:   dict
+        :param table:   The targeted table.
+        :type table:    str
+        :return:        The newly inserted row id (primary key)
+        :rtype:         int
         """
         query_labels = ""
         query_keys = ""
@@ -112,7 +132,6 @@ class Repository(object):
             table, query_labels, query_keys
         )
 
-        print(query)
         cursor = self.db_conn.execute(query, query_values)
 
         self._commit()
@@ -121,7 +140,13 @@ class Repository(object):
     @create.add
     def create(self, array: list, table: str) -> int:
         """
-        DONE
+        Operates a serie of row creations as specified in this method original
+        definition from the given dict array.
+
+        :param array:   The list of key / values.
+        :type array:    list
+        :return:        The last inserted row id (primary key)
+        :rtype:         int
         """
         lastrowid = -1
         for row in array:
@@ -140,8 +165,8 @@ class Repository(object):
     @overload
     def read(self, constraints: dict, table: str) -> list:
         """
-        Pulls the records corresponding to the :constraints: dictionnary from
-        the table :table:.
+        Pulls the records corresponding to the **constraints** dictionnary from
+        the **table** table.
 
         :param constraints: Key/value dictionnary used to filter the database
                             selection. Set to empty {} to pull the whole table
@@ -170,7 +195,7 @@ class Repository(object):
     @read.add
     def read(self, table: str) -> list:
         """
-        Pulls every records from the table :table:.
+        Pulls every records from the **table** table.
         Same as `read({}, "table")`.
 
         :param table:   The table name.
@@ -247,7 +272,7 @@ class Repository(object):
         """
         self._read_guard()
 
-        query = "SELECT COUNT( id ) AS count FROM {0}".format(table)
+        query = "SELECT COUNT( * ) AS count FROM {0}".format(table)
         if constraints != {}:
             query_constraints = " WHERE "
             cpt = 0
@@ -274,7 +299,7 @@ class Repository(object):
         :rtype:         int
         """
         cursor = self.db_conn.execute(
-            "SELECT COUNT( id ) AS count FROM {0};".format(table)
+            "SELECT COUNT( * ) AS count FROM {0};".format(table)
         )
 
         return dict(cursor.fetchone())['count']

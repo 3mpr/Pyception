@@ -12,9 +12,12 @@ Part of the **Pyception** package.
 """
 
 import os
+
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from scipy.ndimage.filters import convolve
+
 from lib import log, Level, db_file, Repository
 
 from .IVT import IVT
@@ -29,7 +32,7 @@ class Experiment(object):
     fixation matrix and heatmap for the corresponding dataset (subject /
     experience name link within database).
 
-    A typical workfolw with this class looks as follow::
+    A typical workflow with this class looks as follow::
 
         my_subject = Subject(my_subject_name)
         my_experiment = Experiment(my_experiment_name, my_subject)
@@ -49,15 +52,16 @@ class Experiment(object):
     convolution_kernel = circle_matrix(80, True)
     filename = "results.xlsx"
     refresh = False
+    heatmap_figure_max_value = 1.0
 
 # ----------------------------------------------------------------------- MAGIC
 
     def __init__(self, name: str, subject) -> None:
         """
-        Class constructor. Intializes important variables.
+        Intializes variables to their default values.
 
         :param name:    The name of the experiment.
-        :param subject: The Subject that owns this experiment.
+        :param subject: The Subject who owns this experiment.
         :type name:     str
         :type subject:  Subject
         """
@@ -83,20 +87,25 @@ class Experiment(object):
 
     def _load(self) -> None:
         """
-        Deferred class constructor, loads important values from the database.
+        Deferred class constructor, loads variables values from the underlying
+        repository.
+
+        .. seealso:: Repository
         """
-        log("Retreiving experiment %s description..." % self.name, linesep="")
-        this = self.repository.read({
+        log("Retreiving experiment %s description..." % self.name, Level.DEBUG,
+            linesep="")
+        repo_self = self.repository.read({
             'name': self.name,
             'subject': self.subject.id
         }, "experiments")
-        if not this:
+        if not repo_self:
             log(" Failed", Level.FAILED)
             log("Experiment does not exist in database.", Level.WARNING)
             return
-        this = this[0]
+        repo_self = repo_self[0]
         log(" Done", Level.DONE)
-        self.id = this['id']
+
+        self.id = repo_self['id']
         self.data = self.repository.read({'experiment': self.id}, "data")
         self.persistent = True
 
@@ -130,36 +139,44 @@ class Experiment(object):
 
     def analyze(self) -> None:
         """
-        Computes from this object variables general values such as how long
-        did the experiment last, the fixation list and matrix of the gaze data
-        and which (and for how long) these match the registered areas of
-        interest.
+        Operates the experiment analysis. Based on the timed coordinates
+        retreived at object construction, this method calculates :
+
+        - the experiment length ;
+        - the experiment mean frequency ;
+        - the frequency at each point of the dataset (the invert of the elapsed
+        time between the two records) ;
+        - the fixations points (through the use of a FixationDetector, IVT as
+        4.07.2017)
+        - the fixation matrix ;
+        - the fixation / area of interest link, that is to say which fixations
+        lay in which area and for how long.
         """
-        log("Starting experiment analysis...")
+        log("Analyzing experiment %s..." % self.id)
         if not self.persistent:
             log("FATAL. Unable to analyze unpersistent experiment.",
                 Level.ERROR)
             return
         if len(self.data) < 2:
-            log("Inconsistent data...", linesep="")
+            log("Inconsistent data...", Level.DEBUG, linesep="")
             log(" Skipped", Level.FAILED)
             return
 
-        log("Computing general values...", linesep="")
+        log("Computing general values...", Level.DEBUG, linesep="")
         self.length = abs(self.data[-1]["timestamp"]
                           - self.data[0]["timestamp"])
         self.mean_frequency = float(len(self.data)) / self.length
         self._frequence_over_time(self.data)
         log(" Done", Level.DONE)
 
-        log("Computing fixations...", linesep="")
+        log("Computing fixations...", Level.DEBUG, linesep="")
         self.fixation_points = self.algorithm.fixation(self.data)
         log(" Done", Level.DONE)
-        log("Computing fixation matrix...", linesep="")
+        log("Computing fixation matrix...", Level.DEBUG,linesep="")
         self.fixation_matrix = matrix(self.fixation_points)
         log(" Done", Level.DONE)
 
-        log("Detecting Area Of Interest matchs...", linesep="")
+        log("Detecting Area Of Interest matchs...", Level.DEBUG, linesep="")
         for aoi in self.aois:
             watch_count = 0
             watch_time = 0.0
@@ -180,11 +197,11 @@ class Experiment(object):
     def make_heatmap(self) -> np.ndarray:
         """
         Computes through matrix convolution this experiment heatmap.
-        Helpful for visualtion purpose.
+        Helpful for visualisation.
 
         This method must be called after analyze.
-        This method is computationally expensive and may take a while
-        to complete.
+        This method is **computationally expensive** and may take a while to
+        complete.
 
         :return:    The computed heatmap matrix.
         :rtype:     np.ndarray
@@ -192,29 +209,53 @@ class Experiment(object):
         if self.heatmap:
             return self.heatmap
         if not self.analyzed:
-            error_msg = "A call to analyze must be done first to the heatmap" \
+            error_msg = "A call to analyze must be done prior to the heatmap" \
                         + " construction."
             log(error_msg, Level.EXCEPTION)
             raise Exception(error_msg)
 
-        log("Computing matrix convolution...", linesep="")
+        log("Computing matrix convolution...", Level.DEBUG, linesep="")
         self.heatmap = convolve(
             self.fixation_matrix,
             self.convolution_kernel
         )
 
-        log(" Done.", Level.DONE)
+        log(" Done", Level.DONE)
         return self.heatmap
 
-    def save(self, destination: str, refresh: bool = None) -> None:
+    def figure(self, cmap: str = 'nipy_spectral') -> plt.figure.Figure \
+            and plt.Image and plt.colorbar:
         """
-        Save this experiment analysis result to disk.
-        If no path is provided, it will be built from this experiment subject
-        path.
+        Builds a pyplot Figure object with the previously computed heatmap in
+        it. The resulting image is different from the original heatmap as
+        values above **heatmap_figure_max_value** are grouped together.
+
+        :param cmap:    The figure image color code.
+        :type cmap:     str
+        :return:        The composite elements of the newly created figure.
+        :rtype:         plt.figure.Figure and plt.Image and plt.colorbar
+        """
+        if self.heatmap is None:
+            log("Heatmap not built yet, unable to create figure.", Level.ERROR)
+            return
+        fig = plt.figure()
+        image = plt.imshow(self.heatmap, cmap=cmap, vmin=0.0,
+                           vmax=self.heatmap_figure_max_value)
+        clrb = plt.colorbar()
+        return fig, image, clrb
+
+    def save(self, destination: str = None, refresh: bool = None) -> None:
+        """
+        Saves this experiment analysis result to disk.
+        If no path is provided, the destination will be decided from this
+        experiment subject path.
 
         :param destination: The destination path on disc where this experiment
                             analysis results should be saved.
         :type destination:  str
+        :param refresh:     Whether to overwrite possibly already existing
+                            experiment save or not.
+        :type refresh:      bool
         """
         if not self.analyzed:
             log("Experiment must be analyzed prior to save.", Level.ERROR)
@@ -225,6 +266,8 @@ class Experiment(object):
 
         if not os.path.isdir(directory):
             os.makedirs(directory)
+        for cell in self.data:  # TODO check how to alleviate this
+            cell["fixation"] = str(cell["fixation"])
         filepath = os.path.join(directory, self.filename)
         if os.path.isfile(filepath) and not refresh:
             log("Experiment analytics already done, skipping.", linesep="")
@@ -239,13 +282,18 @@ class Experiment(object):
             'length': self.length,
             'mean_frequency': self.mean_frequency
         }.items()))
+
         writer = pd.ExcelWriter(os.path.join(directory, self.filename))
         gen_data.to_excel(writer, "general")
-        for cell in self.data:
-            cell["fixation"] = str(cell["fixation"])
         pd.DataFrame(self.data).to_excel(writer, "data")
         pd.DataFrame(self.fixation_points).to_excel(writer, "fixations")
         pd.DataFrame(self.aois_fixations).to_excel(writer, "aois")
 
         writer.save()
         log(" Done", Level.DONE)
+
+# ------------------------------------------------------------------ PROPERTIES
+
+    @property
+    def saved_analysis(self):
+        return os.path.isfile(os.path.join(self.directory, self.filename))

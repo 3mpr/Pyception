@@ -1,9 +1,26 @@
-from .path import *
+# -*- coding: utf-8 -*-
+
+"""
+Part of the **PyCeption** package.
+
+:Version: 1
+:Authors: - Florian Indot
+:Contact: florian.indot@gmail.com
+:Date: 04.07.2017
+:Status: dev
+:Copyright: MIT License
+"""
+
+import os
+from .path import rlistdir
+
 
 class ResourceCollection(object):
     """
     Simple helper class, represents a directory and file type association.
     Its purpose is to short-circuit repetitive file manipulation tasks.
+
+    TODO documentation
     """
     def __init__(self, directory: str, extensions: str or list) -> None:
         self.directory = directory
@@ -12,6 +29,9 @@ class ResourceCollection(object):
             self.extensions.append(extensions)
         else:
             self.extensions = extensions
+
+    def __len__(self):
+        return len(self.list())
 
     def _has(self, file: str) -> bool:
         for f in self.list():
@@ -23,23 +43,32 @@ class ResourceCollection(object):
         for extension in self.extensions:
             yield file + extension
 
-    def list(self) -> list:
+    def list(self, short: bool = False) -> list:
         """
         List every file this resource collection has.
         The listing is recursive.
 
-        :return: list The files
+        TODO ADD SHORT ARG
+
+        :return:    The files
+        :rtype:     list
         """
-        return rlistdir(self.directory, self._filter)
+        files = rlistdir(self.directory, self._filter)
+        if not short:
+            return files
+        return [os.path.basename(file_) for file_ in files]
 
     def has(self, file: str) -> bool:
         """
         Returns whether this ResourceCollection has the file <file> or not.
-        If the file is provided without extension, the ResourceCollection will attempt
-        to resolve it with internal extensions.
+        If the file is provided without extension, the ResourceCollection will
+        attempt to resolve it with internal extensions.
 
-        :param file: str The searched file
-        :return: bool Whether this ResourceCollection has the searched file or not
+        :param file:    The searched file
+        :type file:     str
+        :return:        Whether this ResourceCollection has the searched file
+                        or not
+        :rtype:         bool
         """
         if len(file.split(".")) > 1:
             return self._has(file)
@@ -51,17 +80,22 @@ class ResourceCollection(object):
     def get(self, file: str) -> str:
         """
         Returns the path of the file <file>.
-        If the file is provided without extension, the ResourceCollection will attempt
-        to resolve it with internal extensions and return the first suffixed file found if any.
-        This method raise IOError if the searched file does not exist in this ResourceCollection.
+        If the file is provided without extension, the ResourceCollection will
+        attempt to resolve it with internal extensions and return the first
+        suffixed file found if any. This method raise IOError if the searched
+        file does not exist in this ResourceCollection.
 
-        :param file: str The searched file
-        :return: The file path
+        :param file:    The searched file
+        :type file:     str
+        :return:        The file path
+        :rtype:         str
 
         :raise IOError
         """
         if not self.has(file):
-            raise IOError("File {} does not exist in {}.".format(file, self.directory))
+            raise IOError("File {} does not exist in {}.".format(
+                file, self.directory
+            ))
 
         if len(file.split(".")) > 1:
             for f in self.list():
@@ -81,6 +115,7 @@ class ResourceCollection(object):
         return retval
 
     def _has_extension(self, file: str):
+        file = file.split("/")[-1]
         file.strip(".")
         file_parts = file.split(".")
         file_parts.pop(0)

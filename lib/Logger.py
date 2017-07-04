@@ -14,20 +14,22 @@ Part of the **PyCeption** package.
 import os
 from enum import Enum
 from time import gmtime, strftime
-from lib import Singleton
+from lib.pattern import Singleton
+from lib import workdir
 
 
 RESET = "\033[0m"
 
 
 class Level(Enum):
-    INFORMATION = 0
-    WARNING = 1
-    ERROR = 2
-    EXCEPTION = 3
-    DONE = 4
-    CR_MESSAGE = 5
-    FAILED = 6
+    EXCEPTION = 0
+    ERROR = 1
+    WARNING = 2
+    INFORMATION = 3
+    DEBUG = 4
+    TRACE = 5
+    FAILED = 20
+    DONE = 21
 
 
 class Color(Enum):
@@ -68,30 +70,70 @@ class Logger(object):
 
 # ----------------------------------------------------------------------- MAGIC
 
-    def __init__(self):
+    def __init__(self, output_level: Level = Level.INFORMATION):
+        """
+        Class constructor. Initializes the logging output level an detect
+        whether the script is running on a windows or unix platform.
+
+        :param output_level:    The stdout verbosity of the logging.
+        :type output_level:     Level
+        """
+        self.output_level = output_level
         self._print = self._print_nt if os.name == 'nt' else self._print_unix
+
+        fout_path = os.path.join(
+            workdir,
+            strftime("%y-%m-%d.log", gmtime())
+        )
+        self._file_out = open(fout_path, "a+")
+        self._last_output_level = None
 
 # --------------------------------------------------------------------- METHODS
 
-    def log(self, text: str, lvl: Level = Level.INFORMATION,
+    def log(self, message: str, lvl: Level = Level.INFORMATION,
             linesep: str = os.linesep):
-        self._print(text, lvl, linesep)
+        """
+        Main class method, logs the messages.
+
+        :param message:     The text to be logged.
+        :param lvl:         The level of the message.
+        :type message:      str
+        :type lvl:          Level
+        """
+        output = self._print(message, lvl)
+
+        if lvl == Level.DONE or lvl == lvl.FAILED:
+            lvl = self._last_output_level
+
+        if lvl.value <= self.output_level.value:
+            print(output, end=linesep)
+        self._file_out.write(output + linesep)
+
+        self._last_output_level = lvl
 
     def _print_nt(self, text: str, lvl: Level = Level.INFORMATION,
                   linesep: str = os.linesep):
+        """
+        Windows stdout logging. Without colors.
+        """
         if lvl == Level.INFORMATION:
-            print("Info: %s" % text, end=linesep)
+            return "Info: %s" % text
         elif lvl == Level.WARNING:
-            print("Warning: %s" % text, end=linesep)
+            return "Warning: %s" % text
         elif lvl == Level.ERROR:
-            print("Error: %s" % text, end=linesep)
+            return "Error: %s" % text
         elif lvl == Level.EXCEPTION:
-            print("EXCEPTION: %s" % text, end=linesep)
+            return "EXCEPTION: %s" % text
         elif lvl == Level.DONE:
-            print(" %s" % text, end=linesep)
+            return " %s ✔" % text
+        elif lvl == Level.FAILED:
+            return " %s ✘" % text
 
     def _print_unix(self, text: str = "", lvl: Level = Level.INFORMATION,
                     linesep: str = os.linesep):
+        """
+        UNIX stdout logging. With colors.
+        """
         prefix = ""
         suffix = ""
         color = RESET
@@ -114,6 +156,9 @@ class Logger(object):
         elif lvl == Level.FAILED:
             suffix = " ✘"
             color = Color.ORANGE.value
+        elif lvl == Level.DEBUG:
+            prefix = "Debug :"
+            color = Color.WHITE.value
 
         message = "{bold}{color}{prefix} {text} {suffix}{reset}".format(
             bold=Style.BOLD.value,
@@ -123,8 +168,7 @@ class Logger(object):
             suffix=suffix,
             reset=RESET
         )
+
         if lvl is not Level.DONE and lvl is not Level.FAILED:
             message = strftime("[%y-%m-%d %H:%M:%S] - ", gmtime()) + message
-        output = message.ljust(110)
-
-        print(output, end=linesep)
+        return message.ljust(110)

@@ -13,9 +13,10 @@ Part of the **PyCeption** package.
 
 import math, inspect
 from lib import Logger, Level
+from .conf import logging_level
 
 
-logger = Logger()
+logger = Logger(logging_level)
 log = logger.log
 
 

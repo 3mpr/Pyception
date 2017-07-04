@@ -92,6 +92,7 @@ def find(file: str, directory: str) -> list:
 def rlistdir(directory: str, filter_callback: callable = None) -> list:
     """
     Recursively list all the content of <directory>.
+
     :param directory: str The listed directory
     :param filter_callback: A given result filter
     :return: list The found content

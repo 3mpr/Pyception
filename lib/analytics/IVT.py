@@ -45,8 +45,9 @@ class IVT(FixationDetector):
         """
         self.threshold = threshold
         log("Building {0}n ray kernel matrix...".format(str(kernel_ray)),
-            Level.INFORMATION, "")
+            Level.DEBUG, "")
         self.kernel = circle_matrix(kernel_ray, True)
+        log(" Done", Level.DONE)
 
     def fixation(self, points: list) -> list:
         _ = self.speed(points)

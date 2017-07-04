@@ -74,7 +74,8 @@ def circle_matrix(radius: int, gradient: bool = False) -> np.ndarray:
     if gradient:
         grd = np.arange(0., 1. + 1./radius, 1./radius)
     else:
-        grd = np.ones(radius)
+        grd = np.zeros(2 * radius + 2)
+        grd[-1] = 1.0
     cpt = radius * 2 + 1
     retval = np.zeros((cpt, cpt))
     for i in range(cpt):
@@ -86,3 +87,21 @@ def circle_matrix(radius: int, gradient: bool = False) -> np.ndarray:
                 delta = len(grd) - 1
             retval[i-1, j-1] = 1 - grd[int(delta)]
     return retval
+
+def draw_line(target: np.ndarray, vertical: bool, c1: int, c2: int, axe: int) -> None:
+    def set_cell(a, b, val):
+        if vertical:
+            target[b, a] = val
+        else:
+            target[a, b] = val
+
+    cpt = c1
+    while cpt <= c2:
+        set_cell(axe, cpt, 1.0)
+        cpt += 1
+
+def square(target: np.ndarray, x1: float, y1: float, x2: float, y2: float) -> None:
+    draw_line(target, False, x1, x2, y1)
+    draw_line(target, False, x1, x2, y2)
+    draw_line(target, True, y1, y2, x1)
+    draw_line(target, True, y1, y2, x2)
