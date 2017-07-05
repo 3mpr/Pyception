@@ -16,7 +16,8 @@ Part of the **PyCeption** package.
 
 import numpy as np
 
-from lib import log, Level, inheritdoc
+import lib as pct
+from lib import Level, inheritdoc
 
 from .FixationDetector import FixationDetector
 from .plan2d import Point, circle_matrix
@@ -44,13 +45,13 @@ class IVT(FixationDetector):
         :type threshold: float
         """
         self.threshold = threshold
-        log("Building {0}n ray kernel matrix...".format(str(kernel_ray)),
-            Level.DEBUG, "")
+        pct.log("Building {0}n ray kernel matrix...".format(str(kernel_ray)),
+                Level.DEBUG, "")
         self.kernel = circle_matrix(kernel_ray, True)
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
 
     def fixation(self, points: list) -> list:
-        _ = self.speed(points)
+        self.speed(points)
         return self.collapse(points)
 
     def speed(self, points: list) -> dict:

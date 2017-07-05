@@ -18,3 +18,10 @@ log = logger.log
 from .persistence import path, Repository, ResourceCollection
 from .utils import inheritdoc
 from .analytics import Point, Area, FixationDetector, IVT, Subject, Experiment
+
+
+def reload() -> None:
+    global logger
+    global log
+    logger = Logger(SETTINGS["logging_level"])
+    log = logger.log

@@ -11,7 +11,8 @@ Part of the **PyCeption** package.
 :Copyright: MIT License
 """
 
-from lib import pattern
+import lib as pct
+from lib import pattern, Level
 from .ResourceCollection import ResourceCollection as RC
 
 from os.path import dirname, join, abspath
@@ -56,6 +57,7 @@ class Repository(object):
         :param schema_dir:  The tables schema directory.
         :type schema_dir:   str
         """
+        self.db_file = db_file
         self.db_conn = sqlite3.connect(db_file)
         self.db_conn.row_factory = sqlite3.Row
         self.schemas = RC(schema_dir, [".sql"])
@@ -79,12 +81,16 @@ class Repository(object):
         """
         Sets up the database schemas as specified in the schema_dir sql files.
         """
+        pct.log("Initializing database %s..." % self.db_file,
+                Level.INFORMATION)
         for fin in self.schemas.list():
             with open(fin, "r") as schema:
                 query = schema.read().strip("\n")
-                print(query)
+                pct.log("Issuing SQL query:", Level.DEBUG)
+                pct.log(query, Level.DEBUG)
                 self.db_conn.execute(query)
         self.db_conn.commit()
+        pct.log("Database initialized.", Level.INFORMATION)
 
     def drop(self, table: str = "") -> None:
         """

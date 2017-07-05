@@ -19,7 +19,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 from scipy.ndimage.filters import convolve
 
-from lib import SETTINGS, log, Level, Repository
+import lib as pct
+from lib import Level
 
 from .IVT import IVT
 from .plan2d import matrix, circle_matrix, Point, Area
@@ -48,7 +49,7 @@ class Experiment(object):
     """
 # ------------------------------------------------------------------- VARIABLES
 
-    repository = Repository(SETTINGS["db_file"])
+    repository = pct.Repository(pct.SETTINGS["db_file"])
     algorithm = IVT()
     convolution_kernel = circle_matrix(80, True)
     filename = "results.xlsx"
@@ -93,18 +94,18 @@ class Experiment(object):
 
         .. seealso:: Repository
         """
-        log("Retreiving experiment %s description..." % self.name, Level.DEBUG,
-            linesep="")
+        pct.log("Retreiving experiment %s description..." % self.name,
+                Level.DEBUG, linesep="")
         repo_self = self.repository.read({
             'name': self.name,
             'subject': self.subject.id
         }, "experiments")
         if not repo_self:
-            log(" Failed", Level.FAILED)
-            log("Experiment does not exist in database.", Level.WARNING)
+            pct.log(" Failed", Level.FAILED)
+            pct.log("Experiment does not exist in database.", Level.WARNING)
             return
         repo_self = repo_self[0]
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
 
         self.id = repo_self['id']
         self.data = self.repository.read({'experiment': self.id}, "data")
@@ -153,31 +154,32 @@ class Experiment(object):
         - the fixation / area of interest link, that is to say which fixations
         lay in which area and for how long.
         """
-        log("Analyzing experiment %s..." % self.id)
+        pct.log("Analyzing experiment %s..." % self.id)
         if not self.persistent:
-            log("FATAL. Unable to analyze unpersistent experiment.",
-                Level.ERROR)
+            pct.log("FATAL. Unable to analyze unpersistent experiment.",
+                    Level.ERROR)
             return
         if len(self.data) < 2:
-            log("Inconsistent data...", Level.DEBUG, linesep="")
-            log(" Skipped", Level.FAILED)
+            pct.log("Inconsistent data...", Level.DEBUG, linesep="")
+            pct.log(" Skipped", Level.FAILED)
             return
 
-        log("Computing general values...", Level.DEBUG, linesep="")
+        pct.log("Computing general values...", Level.DEBUG, linesep="")
         self.length = abs(self.data[-1]["timestamp"]
                           - self.data[0]["timestamp"])
         self.mean_frequency = float(len(self.data)) / self.length
         self._frequence_over_time(self.data)
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
 
-        log("Computing fixations...", Level.DEBUG, linesep="")
+        pct.log("Computing fixations...", Level.DEBUG, linesep="")
         self.fixation_points = self.algorithm.fixation(self.data)
-        log(" Done", Level.DONE)
-        log("Computing fixation matrix...", Level.DEBUG,linesep="")
+        pct.log(" Done", Level.DONE)
+        pct.log("Computing fixation matrix...", Level.DEBUG,linesep="")
         self.fixation_matrix = matrix(self.fixation_points)
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
 
-        log("Detecting Area Of Interest matchs...", Level.DEBUG, linesep="")
+        pct.log("Detecting Area Of Interest matchs...", Level.DEBUG,
+                linesep="")
         for aoi in self.aois:
             watch_count = 0
             watch_time = 0.0
@@ -193,7 +195,7 @@ class Experiment(object):
             })
 
         self.analyzed = True
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
 
     def make_heatmap(self) -> np.ndarray:
         """
@@ -212,16 +214,16 @@ class Experiment(object):
         if not self.analyzed:
             error_msg = "A call to analyze must be done prior to the heatmap" \
                         + " construction."
-            log(error_msg, Level.EXCEPTION)
+            pct.log(error_msg, Level.EXCEPTION)
             raise Exception(error_msg)
 
-        log("Computing matrix convolution...", Level.DEBUG, linesep="")
+        pct.log("Computing matrix convolution...", Level.DEBUG, linesep="")
         self.heatmap = convolve(
             self.fixation_matrix,
             self.convolution_kernel
         )
 
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
         return self.heatmap
 
     def figure(self, cmap: str = 'nipy_spectral') -> matplotlib.figure.Figure \
@@ -237,7 +239,8 @@ class Experiment(object):
         :rtype:         plt.figure.Figure and plt.Image and plt.colorbar
         """
         if self.heatmap is None:
-            log("Heatmap not built yet, unable to create figure.", Level.ERROR)
+            pct.log("Heatmap not built yet, unable to create figure.",
+                    Level.ERROR)
             return
         fig = plt.figure()
         image = plt.imshow(self.heatmap, cmap=cmap, vmin=0.0,
@@ -259,7 +262,7 @@ class Experiment(object):
         :type refresh:      bool
         """
         if not self.analyzed:
-            log("Experiment must be analyzed prior to save.", Level.ERROR)
+            pct.log("Experiment must be analyzed prior to save.", Level.ERROR)
             return
 
         directory = self.directory if destination is None else destination
@@ -271,10 +274,10 @@ class Experiment(object):
             cell["fixation"] = str(cell["fixation"])
         filepath = os.path.join(directory, self.filename)
         if os.path.isfile(filepath) and not refresh:
-            log("Experiment analytics already done, skipping.", linesep="")
-            log(" Done", Level.DONE)
+            pct.log("Experiment analytics already done, skipping.", linesep="")
+            pct.log(" Done", Level.DONE)
             return
-        log("Starting experiment save...", linesep="")
+        pct.log("Starting experiment save...", linesep="")
 
         gen_data = pd.DataFrame(list({
             'id': self.id,
@@ -291,7 +294,7 @@ class Experiment(object):
         pd.DataFrame(self.aois_fixations).to_excel(writer, "aois")
 
         writer.save()
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
 
 # ------------------------------------------------------------------ PROPERTIES
 

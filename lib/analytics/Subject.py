@@ -16,7 +16,8 @@ import sys
 
 import matplotlib.pyplot as plt
 
-from lib import SETTINGS, log, Level, Repository
+import lib as pct
+from lib import SETTINGS, Level, Repository
 from .Experiment import Experiment
 
 
@@ -57,14 +58,14 @@ class Subject(object):
         """
         Deferred class constructor, loads important values from the database.
         """
-        log("Retreiving subject %s description..." % self.name, Level.DEBUG,
-            linesep="")
+        pct.log("Retreiving subject %s description..." % self.name,
+                Level.DEBUG, linesep="")
         data = self.repository.read({'name': self.name}, "subjects")[0]
         if not data:
-            log(" Failed", Level.FAILED)
-            log("Subject does not exist in database.", Level.WARNING)
+            pct.log(" Failed", Level.FAILED)
+            pct.log("Subject does not exist in database.", Level.WARNING)
             return
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
         self.id = data["id"]
         self._control = data["control"] == 1
 
@@ -72,10 +73,10 @@ class Subject(object):
         '''
         TODO
         '''
-        log("Retreiving %s experiments descriptions..." % self.name,
-            Level.DEBUG, linesep="")
+        pct.log("Retreiving %s experiments descriptions..." % self.name,
+                Level.DEBUG, linesep="")
         experiments = self.repository.read({'subject': self.id}, "experiments")
-        log(" Done", Level.DONE)
+        pct.log(" Done", Level.DONE)
         for experiment in experiments:
             self.experiments.append(Experiment(experiment["name"], self))
 
@@ -85,7 +86,7 @@ class Subject(object):
         Retreives this subject's experiments from the database before to
         loop and analyze each of those.
         """
-        log("Beginning subject {0} experiments analysis...".format(
+        pct.log("Beginning subject {0} experiments analysis...".format(
             self.id
         ), Level.INFORMATION)
 
@@ -97,16 +98,16 @@ class Subject(object):
                 if draw_heatmap and experiment.analyzed:
                     experiment.make_heatmap()
             except Exception as e:
-                log(e, Level.EXCEPTION)
-                log("A fatal error occured. Exiting...", Level.ERROR)
+                pct.log(e, Level.EXCEPTION)
+                pct.log("A fatal error occured. Exiting...", Level.ERROR)
                 sys.exit(-1)
             except KeyboardInterrupt as ki:
                 print("")
-                log("Keyboard Interrupt. Exiting...", Level.INFORMATION)
+                pct.log("Keyboard Interrupt. Exiting...", Level.INFORMATION)
                 sys.exit(0)
 
-        log("Experiments analysis completed successfully.",
-            Level.INFORMATION)
+        pct.log("Experiments analysis completed successfully.",
+                Level.INFORMATION)
 
     def save(self):
         """
