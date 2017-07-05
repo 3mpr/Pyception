@@ -14,9 +14,8 @@ Part of the **PyCeption** package.
 import os
 from enum import Enum
 from time import gmtime, strftime
+import lib
 from lib.pattern import Singleton
-from lib import workdir
-
 
 RESET = "\033[0m"
 
@@ -82,7 +81,7 @@ class Logger(object):
         self._print = self._print_nt if os.name == 'nt' else self._print_unix
 
         fout_path = os.path.join(
-            workdir,
+            lib.SETTINGS["workdir"],
             strftime("%y-%m-%d.log", gmtime())
         )
         self._file_out = open(fout_path, "a+")

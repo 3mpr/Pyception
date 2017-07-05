@@ -1,19 +1,20 @@
-import os
+from os import makedirs
+from os.path import join, dirname, isdir
+from .Config import Config
 
-workdir = os.path.join(os.path.expanduser("~"), ".pyception")
-analytics_dir = os.path.join(
-    os.path.expanduser("~"),
-    "Documents",
-    "pct_analytics"
-)
+SETTINGS = Config.read(join(dirname(dirname(__file__)), "settings.py"))
 
-if not os.path.isdir(analytics_dir):
-    os.makedirs(analytics_dir)
+if not isdir(SETTINGS['workdir']):
+    makedirs(SETTINGS['workdir'])
+if not isdir(SETTINGS['analytics_dir']):
+    makedirs(SETTINGS['analytics_dir'])
 
-
-from .conf import db_file, logging_level
 from .pattern import Singleton
 from .Logger import Logger, Level, Color, Background, bold
+
+logger = Logger(SETTINGS["logging_level"])
+log = logger.log
+
 from .persistence import path, Repository, ResourceCollection
-from .utils import log, progress, inheritdoc
+from .utils import inheritdoc
 from .analytics import Point, Area, FixationDetector, IVT, Subject, Experiment

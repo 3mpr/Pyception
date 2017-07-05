@@ -48,10 +48,10 @@ class ResourceCollection(object):
         List every file this resource collection has.
         The listing is recursive.
 
-        TODO ADD SHORT ARG
-
-        :return:    The files
-        :rtype:     list
+        :param short:   Whether to return the full path of the files or not.
+        :type short:    bool
+        :return:        The files
+        :rtype:         list
         """
         files = rlistdir(self.directory, self._filter)
         if not short:

@@ -16,7 +16,7 @@ import sys
 
 import matplotlib.pyplot as plt
 
-from lib import db_file, analytics_dir, log, progress, Level, Repository
+from lib import SETTINGS, log, Level, Repository
 from .Experiment import Experiment
 
 
@@ -29,7 +29,7 @@ class Subject(object):
     """
 # ------------------------------------------------------------------- VARIABLES
 
-    db_file = db_file
+    db_file = SETTINGS["db_file"]
     repository = Repository(db_file)
 
 # ----------------------------------------------------------------------- MAGIC
@@ -42,7 +42,7 @@ class Subject(object):
         :type name:     str
         """
         self.name = name
-        self.directory = os.path.join(analytics_dir, self.name)
+        self.directory = os.path.join(SETTINGS["analytics_dir"], self.name)
         self.id = None
         self._control = None
 

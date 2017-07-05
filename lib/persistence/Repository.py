@@ -31,6 +31,8 @@ class Repository(object):
 
     This class metaclass is Singleton. As such, any object creation subsequent
     to the first constructor call will not have any effect.
+
+    .. seealso:: Singleton
     """
 # ------------------------------------------------------------------- VARIABLES
 

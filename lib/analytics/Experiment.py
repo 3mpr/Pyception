@@ -15,10 +15,11 @@ import os
 
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy.ndimage.filters import convolve
 
-from lib import log, Level, db_file, Repository
+from lib import SETTINGS, log, Level, Repository
 
 from .IVT import IVT
 from .plan2d import matrix, circle_matrix, Point, Area
@@ -47,7 +48,7 @@ class Experiment(object):
     """
 # ------------------------------------------------------------------- VARIABLES
 
-    repository = Repository(db_file)
+    repository = Repository(SETTINGS["db_file"])
     algorithm = IVT()
     convolution_kernel = circle_matrix(80, True)
     filename = "results.xlsx"
@@ -223,8 +224,8 @@ class Experiment(object):
         log(" Done", Level.DONE)
         return self.heatmap
 
-    def figure(self, cmap: str = 'nipy_spectral') -> plt.figure.Figure \
-            and plt.Image and plt.colorbar:
+    def figure(self, cmap: str = 'nipy_spectral') -> matplotlib.figure.Figure \
+            and matplotlib.image and plt.colorbar:
         """
         Builds a pyplot Figure object with the previously computed heatmap in
         it. The resulting image is different from the original heatmap as
