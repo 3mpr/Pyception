@@ -28,12 +28,12 @@ if args.verbose:
     lib.reload()
 
 if args.destination:
-    SETTINGS["analytics_dir"] = args.destination
+    lib.SETTINGS["analytics_dir"] = args.destination
 
 if args.source:
-    SETTINGS["db_file"] = os.path.join(SETTINGS["workdir"], args.source)
-    if not os.path.isfile(SETTINGS["db_file"]):
-        Repository(SETTINGS["db_file"]).initialize()
+    lib.SETTINGS["db_file"] = os.path.join(SETTINGS["workdir"], args.source)
+    if not os.path.isfile(lib.SETTINGS["db_file"]):
+        Repository(lib.SETTINGS["db_file"]).initialize()
 
 if args.refresh:
     Experiment.refresh = True
@@ -48,6 +48,8 @@ if args.info:
     for db in dbs.list():
         print("\n{0} ({1})".format(bold(os.path.basename(db)), db))
         repo = Repository(db)
+        Subject.repository = repo
+        Experiment.repository = repo
 
         print("  Nb subjects: {0}".format(repo.count("subjects")))
         print("  Nb experiments : {0}".format(repo.count("experiments")))
@@ -64,20 +66,32 @@ if args.info:
     sys.exit(0)
 
 if args.delete:
-    log("Deleting database %s..." % args.delete, Level.INFORMATION, "")
+    decision = ""
+
     database_path = os.path.join(lib.SETTINGS["workdir"], args.delete)
     if not os.path.isfile(database_path):
-        log(" Failed", Level.FAILED)
         log("Specified database does not exist.", Level.ERROR)
     else:
+        while decision != "y" and decision != "n":
+            decision = input("This action is definitive, are you sure you " +
+                             "want to delete %s ? (y/n) " % args.delete)
+        if decision == "n":
+            log("Deletion cancelled.")
+            sys.exit(0)
+        log("Deleting database %s..." % args.delete, Level.INFORMATION, "")
         os.remove(database_path)
         log(" Done", Level.DONE)
     sys.exit(0)
 
 if args.analyze:
     repo = Repository(lib.SETTINGS["db_file"])
+    Subject.repository = repo
+    Experiment.repository = repo
     subjects = [Subject(subject["name"]) for subject in repo.read("subjects")]
 
     for subject in subjects:
         subject.analyze()
         subject.save()
+    sys.exit(0)
+
+parser.print_help()

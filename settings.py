@@ -10,8 +10,10 @@ from lib.Logger import Level
 # databases and logs
 if os.name == 'nt':
     workdir = join(os.getenv("APPDATA"), "Pyception")
+    logdir = join(workdir, "log")
 else:
-    workdir = join(os.path.expanduser("~"), ".pyception")
+    workdir = join(os.path.expanduser("~"), ".local", "share", "pyception")
+    logdir = join(os.path.expanduser("~"), ".local", "log", "pyception")
 # Analysis directory, specifies where to store the output (png, xlxs, csv) of
 # analysis
 analytics_dir = os.path.join(

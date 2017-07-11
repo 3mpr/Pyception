@@ -35,7 +35,7 @@ class Subject(object):
 
 # ----------------------------------------------------------------------- MAGIC
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, repo: Repository = None) -> None:
         """
         Class constructor. Intializes important variables.
 
@@ -47,6 +47,7 @@ class Subject(object):
         self.id = None
         self._control = None
 
+        self.repository = self.repository if repo is None else repo
         self._load()
 
         self.experiments = list()

@@ -102,7 +102,8 @@ class Experiment(object):
         }, "experiments")
         if not repo_self:
             pct.log(" Failed", Level.FAILED)
-            pct.log("Experiment does not exist in database.", Level.WARNING)
+            pct.log("Experiment %s for %s does not exist in database." %
+                    (self.name, self.subject.name), Level.WARNING)
             return
         repo_self = repo_self[0]
         pct.log(" Done", Level.DONE)

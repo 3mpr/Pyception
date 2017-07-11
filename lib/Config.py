@@ -6,7 +6,7 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 05.06.2017
+:Date: 05.07.2017
 :Revision: 1
 :Copyright: MIT License
 """

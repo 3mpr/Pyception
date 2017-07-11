@@ -12,6 +12,7 @@ Part of the **PyCeption** package.
 """
 
 import os
+import re
 from .path import rlistdir
 
 
@@ -57,6 +58,12 @@ class ResourceCollection(object):
         if not short:
             return files
         return [os.path.basename(file_) for file_ in files]
+
+    def find(self, expr: str) -> list:
+        """
+        TODO
+        """
+        return [file_ for file_ in self.list(True) if re.search(expr, file_)]
 
     def has(self, file: str) -> bool:
         """

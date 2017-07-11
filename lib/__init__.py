@@ -6,6 +6,8 @@ SETTINGS = Config.read(join(dirname(dirname(__file__)), "settings.py"))
 
 if not isdir(SETTINGS['workdir']):
     makedirs(SETTINGS['workdir'])
+if not isdir(SETTINGS['logdir']):
+    makedirs(SETTINGS['logdir'])
 if not isdir(SETTINGS['analytics_dir']):
     makedirs(SETTINGS['analytics_dir'])
 

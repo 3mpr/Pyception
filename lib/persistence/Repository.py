@@ -12,13 +12,19 @@ Part of the **PyCeption** package.
 """
 
 import lib as pct
-from lib import pattern, Level
+from lib import Level
 from .ResourceCollection import ResourceCollection as RC
 
 from os.path import dirname, join, abspath
 
 import sqlite3
 from overload import overload
+import re
+import collections
+
+
+class RepositoryException(Exception):
+    pass
 
 
 class Repository(object):
@@ -37,7 +43,9 @@ class Repository(object):
     """
 # ------------------------------------------------------------------- VARIABLES
 
-    __metaclass__ = pattern.Singleton
+    ForeignKey = collections.namedtuple("ForeignKey", [
+        "from_table", "from_column", "dest_table", "dest_column"
+    ])
 
     db_conn = None
 
@@ -60,7 +68,12 @@ class Repository(object):
         self.db_file = db_file
         self.db_conn = sqlite3.connect(db_file)
         self.db_conn.row_factory = sqlite3.Row
+
         self.schemas = RC(schema_dir, [".sql"])
+        self.foreign_keys = list()
+        self._foreign_keys()
+
+        self.long_transaction = False
 
     def __del__(self) -> None:
         """
@@ -69,13 +82,165 @@ class Repository(object):
         self.db_conn.commit()
         self.db_conn.close()
 
-    def __len__(self) -> int:
-        """
-        Returns this database dataset length.
-        """
-        return self.count("data")
+    def __getitem__(self, key: str) -> object:  # repo["data@experiments:69"], # repo["data@subjects:12"]
+        composition = key.split("@")
+
+        if len(composition) > 2:
+            raise RepositoryException(
+                "Composed queries do not support " +
+                "multiple links"
+            )
+        # Linear query
+        if len(composition) < 2:
+            print(str(composition))
+            request = composition[0].split(":")
+            if len(request) < 2:
+                return self._read(request[0])
+            return self._read({'id': request[1]}, request[0])
+
+        # Composed query
+        if ":" in composition[0]:
+            raise RepositoryException(
+                "ID specified on left operand for linked query"
+            )
+
+        destination = composition[1].split(":")
+        path = self._resolve(composition[0], destination[0])
+        print(str(path))
+        step_data = None
+
+        for index, step in enumerate(reversed(path)):
+
+            if step_data is None:
+                step_data = self._read({
+                    step.from_column: destination[1]
+                }, step.from_table)
+                continue
+
+            tmp = list()
+            for step_cell in step_data:
+                tmp.extend(self._read({
+                    step.from_column: step_cell[step.dest_column]
+                }, step.from_table))
+            step_data = tmp
+
+        return step_data
+
+    def __setitem__(self, key: str, value: dict) -> None:
+        target = key.split(":")
+        if len(target) > 2:
+            raise IndexError("Illformed table[:id] request.")
+        if len(target) == 2:
+            if self.read({'id': target[1]}, target[0]):
+                self.update(value, {'id': target[1]}, target[0])
+                return
+            raise IndexError("ID %s does not exist in database." % target[1])
+        self.create(value, key)
+
+    def __delitem__(self, key: str) -> None:
+        pass
 
 # --------------------------------------------------------------------- METHODS
+
+    def _foreign_keys(self):
+        """
+        TODO
+        """
+        schema_query = """SELECT sql FROM (
+            SELECT sql sql, type type, tbl_name tbl_name, name name
+                FROM sqlite_master
+                UNION ALL
+            SELECT sql, type, tbl_name, name
+                FROM sqlite_temp_master
+        ) WHERE type != 'meta' AND sql NOTNULL AND name NOT LIKE 'sqlite_%'
+        ORDER BY substr(type, 2, 1), name ;"""
+
+        cursor = self.db_conn.execute(schema_query)
+
+        table_strings = list()
+        foreign_keys_strings = list()
+
+        for result in cursor.fetchall():
+            query = dict(result)["sql"]
+            table_string = ""
+            foreign_keys_string = list()
+            for line in query.splitlines():
+                if re.match(".*CREATE TABLE", line):
+                    table_string = line
+                if re.match(".*FOREIGN KEY", line):
+                    foreign_keys_string.append(line)
+            if table_string and foreign_keys_string:
+                table_strings.append(table_string)
+                foreign_keys_strings.append(foreign_keys_string)
+
+        table_pattern = ".*CREATE TABLE (.*)"
+        fk_pattern = ".*FOREIGN KEY \((.*)\) REFERENCES (.*) \((.*)\).*"
+        for index in range(len(table_strings)):
+            table_groups = [
+                cell.strip(" ()\´`") for cell in list(
+                    re.match(table_pattern, table_strings[index]).groups()
+                )]
+            for fk_string in foreign_keys_strings[index]:
+                fk_groups = [
+                    cell.strip(" ()\´`") for cell in list(
+                        re.match(fk_pattern, fk_string).groups()
+                    )]
+                self.foreign_keys.append(Repository.ForeignKey(
+                    table_groups[0], fk_groups[0], fk_groups[1], fk_groups[2]
+                ))
+
+    def _resolve(self, from_table: str, dest_table: str,
+                 keys: list = None) -> ForeignKey:
+        """
+        TODO - DOCUMENTATION & INTERMEDIATE TABLES COMPATIBILITY
+        """
+        keys = self.foreign_keys if keys is None else keys
+
+        for fk in keys:
+            if fk.from_table == from_table and fk.dest_table == dest_table:
+                return [fk]
+
+        potent = False
+        for key in keys:
+            if key.dest_table == dest_table:
+                potent = True
+                break
+        if not potent:
+            return
+
+        path = list()
+        stack = list()
+        stack.append([fk for fk in keys if fk.from_table == from_table])
+        consumed = list()
+
+        while stack:
+            for fk in list(stack[-1]):
+                path.append(fk)
+                consumed.append(fk)
+
+                if len(stack) < len(path):
+                    path.pop()
+
+                if path[-1] is not fk:
+                    path[-1] = fk
+
+                if fk.dest_table == dest_table:
+                    stack = None
+                    break
+
+                candidates = [key for key in keys
+                              if key not in consumed
+                              and key.from_table == fk.dest_table]
+                if candidates:
+                    stack.append(candidates)
+                    break
+
+                stack[-1].remove(fk)
+                if not stack[-1]:
+                    stack.pop()
+                    path.pop()
+
+        return path
 
     def initialize(self) -> None:
         """
@@ -90,6 +255,11 @@ class Repository(object):
                 pct.log(query, Level.DEBUG)
                 self.db_conn.execute(query)
         self.db_conn.commit()
+
+        pct.log("Building foreign key relations...")
+        self.foreign_keys = list()
+        self._foreign_keys()
+
         pct.log("Database initialized.", Level.INFORMATION)
 
     def drop(self, table: str = "") -> None:
@@ -166,12 +336,13 @@ class Repository(object):
         Commits uncommited queries and sets the transaction count to zero.
         Use this before any read / update operation.
         """
-        if self._transaction_count > 0:
-            self.db_conn.commit()
-            self._transaction_count = 0
+        if not self.long_transaction:
+            if self._transaction_count > 0:
+                self.db_conn.commit()
+                self._transaction_count = 0
 
     @overload
-    def read(self, constraints: dict, table: str) -> list:
+    def _read(self, constraints: dict, table: str) -> list:
         """
         Pulls the records corresponding to the **constraints** dictionnary from
         the **table** table.
@@ -196,12 +367,13 @@ class Repository(object):
             query_constraints += "{0}='{1}'".format(key, constraints[key])
             cpt += 1
         query = "SELECT * FROM {0} WHERE {1};".format(table, query_constraints)
+        pct.log("Executing query : %s" % query, pct.Level.DEBUG)
         cursor = self.db_conn.execute(query)
 
         return [dict(cell) for cell in cursor.fetchall()]
 
-    @read.add
-    def read(self, table: str) -> list:
+    @_read.add
+    def _read(self, table: str) -> list:
         """
         Pulls every records from the **table** table.
         Same as `read({}, "table")`.
@@ -317,10 +489,11 @@ class Repository(object):
         Increments the internal transaction count and checks whether it is time
         or not to commit the transactions to the database.
         """
-        self._transaction_count += 1
-        if self._transaction_count > self.commit_delay:
-            self.db_conn.commit()
-            self._transaction_count = 0
+        if not self.long_transaction:
+            self._transaction_count += 1
+            if self._transaction_count > self.commit_delay:
+                self.db_conn.commit()
+                self._transaction_count = 0
 
     def columns(self, table: str) -> list:
         """
@@ -333,6 +506,15 @@ class Repository(object):
         """
         cursor = self.db_conn.execute("SELECT * FROM {0}".format(table))
         return [description[0] for description in cursor.description]
+
+    def start_transaction(self):
+        self._transaction_count = 0
+        self.db_conn.commit()
+        self.long_transaction = True
+
+    def end_transaction(self):
+        self.db_conn.commit()
+        self.long_transaction = False
 
 # ------------------------------------------------------------------ PROPERTIES
 
