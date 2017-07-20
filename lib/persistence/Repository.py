@@ -15,12 +15,12 @@ Part of the **PyCeption** package.
 import lib as pct
 from lib import Level
 from .ResourceCollection import ResourceCollection as RC
+from .DBSchema import DBSchema, LastUpdatedOrderedDict
 
 from os.path import dirname, join, abspath
 
 import sqlite3
 from overload import overload
-import re
 import collections
 
 
@@ -71,6 +71,7 @@ class Repository(object):
         self.db_conn.row_factory = sqlite3.Row
 
         self.schemas = RC(schema_dir, [".sql"])
+        self.schema = DBSchema(self.db_conn)
 
         self.long_transaction = False
 
@@ -183,7 +184,7 @@ class Repository(object):
                 self._transaction_count = 0
 
     @overload
-    def _read(self, constraints: dict, table: str) -> list:
+    def read(self, constraints: dict, table: str, link: str = "") -> list:
         """
         Pulls the records corresponding to the **constraints** dictionnary from
         the **table** table.
@@ -202,19 +203,51 @@ class Repository(object):
 
         query_constraints = ""
         cpt = 0
-        for key in constraints:
-            if cpt > 0 and cpt < len(constraints):
-                query_constraints += " AND "
-            query_constraints += "{0}='{1}'".format(key, constraints[key])
-            cpt += 1
-        query = "SELECT * FROM {0} WHERE {1};".format(table, query_constraints)
+
+        if not link:
+
+            for key in constraints:
+                if cpt > 0 and cpt < len(constraints):
+                    query_constraints += " AND "
+                query_constraints += "{0}='{1}'".format(key, constraints[key])
+                cpt += 1
+
+            query = "SELECT * FROM {0} WHERE {1};".format(
+                table, query_constraints
+            )
+
+        else:
+
+            for key in constraints:
+                if cpt > 0 and cpt < len(constraints):
+                    query_constraints += " AND "
+                query_constraints += "{2}.{0}='{1}'".format(
+                    key, constraints[key], table
+                )
+                cpt += 1
+
+            query_join = ""
+            path = self.schema.path(table, link)
+            for index, milestone in enumerate(list(reversed(path.keys()))):
+                if index > 0 and index < len(path) - 1:
+                    query_join += "\n"
+
+                query_join += " INNER JOIN {0} ON {1}.{2}={3}.{4}".format(
+                    milestone[0], milestone[0], path[milestone][0],
+                    milestone[1], path[milestone][1]
+                )
+
+            query = "SELECT * FROM {0}{1} WHERE {2};".format(
+                link, query_join, query_constraints
+            )
+
         pct.log("Executing query : %s" % query, pct.Level.DEBUG)
         cursor = self.db_conn.execute(query)
 
         return [dict(cell) for cell in cursor.fetchall()]
 
-    @_read.add
-    def _read(self, table: str) -> list:
+    @read.add
+    def read(self, table: str) -> list:
         """
         Pulls every records from the **table** table.
         Same as `read({}, "table")`.
@@ -336,18 +369,6 @@ class Repository(object):
                 self.db_conn.commit()
                 self._transaction_count = 0
 
-    def columns(self, table: str) -> list:
-        """
-        Pull the column names of the :table: table.
-
-        :param table:   The table name.
-        :type table:    str
-        :return:        The list of names
-        :rtype:         list
-        """
-        cursor = self.db_conn.execute("SELECT * FROM {0}".format(table))
-        return [description[0] for description in cursor.description]
-
     def start_transaction(self):
         self._transaction_count = 0
         self.db_conn.commit()
@@ -358,11 +379,3 @@ class Repository(object):
         self.long_transaction = False
 
 # ------------------------------------------------------------------ PROPERTIES
-
-    @property
-    def tables(self) -> list:
-        cursor = self.db_conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table';"
-        )
-
-        return [item for sublist in cursor.fetchall() for item in sublist]

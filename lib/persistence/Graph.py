@@ -43,7 +43,7 @@ class Graph(object):
     def connect(self, root, leaf, cost: int = 1) -> None:
         if root not in self._nodes or leaf not in self._nodes:
             raise GraphException("Node does not exist in graph.")
-            
+
         self._edges[root].append(leaf)
         if not self._direction:
             self._edges[leaf].append(root)

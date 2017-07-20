@@ -31,4 +31,4 @@ db_file = os.path.join(workdir, "data.db")  # Might change
 #   INFORMATION
 #   DEBUG
 #   TRACE
-logging_level = Level.INFORMATION
+logging_level = Level.DEBUG

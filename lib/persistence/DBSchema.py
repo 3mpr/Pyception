@@ -13,16 +13,25 @@ Part of the **PyCeption** package.
 """
 
 import sqlite3
+from collections import OrderedDict
 import re
 from .Graph import Graph
 
+class LastUpdatedOrderedDict(OrderedDict):
+    'Store items in the order the keys were last added'
+
+    def __setitem__(self, key, value):
+        if key in self:
+            del self[key]
+        OrderedDict.__setitem__(self, key, value)
 
 class DBSchema(object):
 
     _schema_query = "SELECT sql FROM sqlite_master WHERE type='table';"
 
     def __init__(self, db_conn: sqlite3.Connection) -> None:
-        self._graph = Graph(False)
+        self.db_conn = db_conn
+        self._graph = Graph(direction=False)
         self._foreign_keys = dict()
 
         cursor = db_conn.execute(self._schema_query)
@@ -41,20 +50,34 @@ class DBSchema(object):
         schema_lines.pop(0)
 
         for line in schema_lines:
-            re_groups = re.match(
+            regex = re.match(
                 ".*FOREIGN KEY \((.*)\) REFERENCES (.*) \((.*)\).*", line
             )
 
-            if not re_groups:
+            if not regex:
                 continue
-            re_groups = re_groups.groups()
+            results = regex.groups()
+            results = [result.strip(" ()\´`") for result in results]
 
-            self._graph.add(re_groups[1])
-            self._graph.connect(name, re_groups[1])
+            self._graph.add(results[1])
+            self._graph.connect(name, results[1])
 
-            self._foreign_keys[(name, re_groups[1])] = (
-                re_groups[0], re_groups[2]
+            self._foreign_keys[(name, results[1])] = (
+                results[0], results[2]
             )
+
+    def path(self, table_one: str, table_two: str) -> dict:
+        _, table_path = self._graph.path(table_one, table_two)
+        if not table_path:
+            return None
+        retval = LastUpdatedOrderedDict()
+        for index, milestone in enumerate(table_path):
+            if index == len(table_path) - 1:
+                break
+            retval[(milestone, table_path[index + 1])] = self.link(
+                milestone, table_path[index + 1]
+            )
+        return retval
 
     def link(self, table_one: str, table_two: str) -> tuple:
         tup = (table_one, table_two)
@@ -64,3 +87,23 @@ class DBSchema(object):
         reverse = tuple(reversed(tup))
         if reverse in self._foreign_keys.keys():
             return tuple(reversed(self._foreign_keys[reverse]))
+
+    def columns(self, table: str) -> list:
+        """
+        Pull the column names of the **table** table.
+
+        :param table:   The table name.
+        :type table:    str
+        :return:        The list of names
+        :rtype:         list
+        """
+        cursor = self.db_conn.execute("SELECT * FROM {0}".format(table))
+        return [description[0] for description in cursor.description]
+
+    @property
+    def tables(self) -> list:
+        cursor = self.db_conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table';"
+        )
+
+        return [item for sublist in cursor.fetchall() for item in sublist]
