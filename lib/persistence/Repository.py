@@ -6,8 +6,8 @@ Part of the **PyCeption** package.
 :Version: 1
 :Authors: - Florian Indot
 :Contact: florian.indot@gmail.com
-:Date: 12.07.2017
-:Revision: 5
+:Date: 21.07.2017
+:Revision: 6
 :Status: dev
 :Copyright: MIT License
 """
@@ -15,13 +15,12 @@ Part of the **PyCeption** package.
 import lib as pct
 from lib import Level
 from .ResourceCollection import ResourceCollection as RC
-from .DBSchema import DBSchema, LastUpdatedOrderedDict
+from .DBSchema import DBSchema
 
 from os.path import dirname, join, abspath
 
 import sqlite3
 from overload import overload
-import collections
 
 
 class RepositoryException(Exception):
@@ -36,17 +35,8 @@ class Repository(object):
     To avoid expensive I/O operations, this class delays sql commits for an
     arbitrary amount of queries. This arbitrary amount can be changed through
     **Repository.commit_delay**.
-
-    This class metaclass is Singleton. As such, any object creation subsequent
-    to the first constructor call will not have any effect.
-
-    .. seealso:: Singleton
     """
 # ------------------------------------------------------------------- VARIABLES
-
-    ForeignKey = collections.namedtuple("ForeignKey", [
-        "from_table", "from_column", "dest_table", "dest_column"
-    ])
 
     db_conn = None
 
@@ -97,11 +87,6 @@ class Repository(object):
                 pct.log(query, Level.DEBUG)
                 self.db_conn.execute(query)
         self.db_conn.commit()
-
-        pct.log("Building foreign key relations...")
-        self.foreign_keys = list()
-        self._foreign_keys()
-
         pct.log("Database initialized.", Level.INFORMATION)
 
     def drop(self, table: str = "") -> None:
@@ -176,7 +161,10 @@ class Repository(object):
     def _read_guard(self) -> None:
         """
         Commits uncommited queries and sets the transaction count to zero.
-        Use this before any read / update operation.
+        Use this before any read / update operation. This method does not have
+        any effect if a transaction has been started.
+
+        :seealso: start_transaction
         """
         if not self.long_transaction:
             if self._transaction_count > 0:
@@ -184,7 +172,7 @@ class Repository(object):
                 self._transaction_count = 0
 
     @overload
-    def read(self, constraints: dict, table: str, link: str = "") -> list:
+    def read(self, constraints: dict, table: str) -> list:
         """
         Pulls the records corresponding to the **constraints** dictionnary from
         the **table** table.
@@ -204,42 +192,74 @@ class Repository(object):
         query_constraints = ""
         cpt = 0
 
-        if not link:
+        for key in constraints:
+            if cpt > 0 and cpt < len(constraints):
+                query_constraints += " AND "
+            query_constraints += "{0}='{1}'".format(key, constraints[key])
+            cpt += 1
 
-            for key in constraints:
-                if cpt > 0 and cpt < len(constraints):
-                    query_constraints += " AND "
-                query_constraints += "{0}='{1}'".format(key, constraints[key])
-                cpt += 1
+        query = "SELECT * FROM {0} WHERE {1};".format(
+            table, query_constraints
+        )
 
-            query = "SELECT * FROM {0} WHERE {1};".format(
-                table, query_constraints
+        pct.log("Executing query : %s" % query, pct.Level.DEBUG)
+        cursor = self.db_conn.execute(query)
+
+        return [dict(cell) for cell in cursor.fetchall()]
+
+    @read.add
+    def read(self, constraints: dict, table: str, link: str) -> list:
+        """
+        Attemps to find the connection between **table** and **link**
+        from the underlying DBSchema before to match the **constraints**
+        dictionnary on **table**. Records from **link** connected to the
+        found **table** records are then returned.
+
+        :param constraints: Key/value dictionnary used to filter the database
+                            selection. Set to empty {} to pull the whole table
+                            content.
+        :param table:       The filtered table name.
+        :param link:        The target data table which records are matched
+                            against the selection.
+        :type constraints:  dict
+        :type table:        str
+        :type link:         str
+        :return:            A list of dictionnary, corresponding to the
+                            records.
+        :rtype:             list
+        """
+        self._read_guard()
+
+        path = self.schema.path(table, link)
+        query_constraints = ""
+        cpt = 0
+
+        if not path:
+            raise RepositoryException(
+                "No connection found between {0} and {1}".format(table, link)
             )
 
-        else:
-
-            for key in constraints:
-                if cpt > 0 and cpt < len(constraints):
-                    query_constraints += " AND "
-                query_constraints += "{2}.{0}='{1}'".format(
-                    key, constraints[key], table
-                )
-                cpt += 1
-
-            query_join = ""
-            path = self.schema.path(table, link)
-            for index, milestone in enumerate(list(reversed(path.keys()))):
-                if index > 0 and index < len(path) - 1:
-                    query_join += "\n"
-
-                query_join += " INNER JOIN {0} ON {1}.{2}={3}.{4}".format(
-                    milestone[0], milestone[0], path[milestone][0],
-                    milestone[1], path[milestone][1]
-                )
-
-            query = "SELECT * FROM {0}{1} WHERE {2};".format(
-                link, query_join, query_constraints
+        for key in constraints:
+            if cpt > 0 and cpt < len(constraints):
+                query_constraints += " AND "
+            query_constraints += "{2}.{0}='{1}'".format(
+                key, constraints[key], table
             )
+            cpt += 1
+
+        query_join = ""
+        for index, milestone in enumerate(list(reversed(path.keys()))):
+            if index > 0 and index < len(path) - 1:
+                query_join += "\n"
+
+            query_join += " INNER JOIN {0} ON {1}.{2}={3}.{4}".format(
+                milestone[0], milestone[0], path[milestone][0],
+                milestone[1], path[milestone][1]
+            )
+
+        query = "SELECT * FROM {0}{1} WHERE {2};".format(
+            link, query_join, query_constraints
+        )
 
         pct.log("Executing query : %s" % query, pct.Level.DEBUG)
         cursor = self.db_conn.execute(query)
@@ -369,12 +389,22 @@ class Repository(object):
                 self.db_conn.commit()
                 self._transaction_count = 0
 
-    def start_transaction(self):
+    def start_transaction(self) -> None:
+        """
+        Disables commits for un undetermined period of time. Useful to enhance
+        performances in view of extended amount of queries.
+
+        Call **end_transaction** to terminate.
+        """
         self._transaction_count = 0
         self.db_conn.commit()
         self.long_transaction = True
 
-    def end_transaction(self):
+    def end_transaction(self) -> None:
+        """
+        Returns to default Repository behaviour, commiting queries after
+        **commit_delay**.
+        """
         self.db_conn.commit()
         self.long_transaction = False
 

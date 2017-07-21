@@ -64,6 +64,18 @@ def bold(text: str) -> str:
 
 
 class Logger(object):
+    """
+    Simple logging system. Prepend timestamps and log levels to given messages.
+    Pretty print the messages when possible (unix systems) using unicodes.
+
+    This class metaclass is Singleton. Any subsequent call to the constructor
+    posterior to to the first object creation will not have any effect.
+
+    This class is tied to the Pyception library itself and should NOT be used
+    nor imported. A "Pyception.log" facility method is available for use.
+    Any behaviour considering log levels and logging files destinations is
+    unsupported outside of the specified shorthand method.
+    """
 
     __metaclass__ = Singleton
 
