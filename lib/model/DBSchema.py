@@ -157,6 +157,17 @@ class DBSchema(object):
         cursor = self.db_conn.execute("SELECT * FROM {0}".format(table))
         return [description[0] for description in cursor.description]
 
+    def foreign_keys(self, table: str) -> list:
+        if table not in self.tables:
+            raise IndexError("Table %s not present in database" % table)
+
+        retval = list()
+        for table_tuple in self._foreign_keys.keys():
+            if table_tuple[0] == table:
+                retval.append(self._foreign_keys[table_tuple])
+
+        return retval
+
 # ------------------------------------------------------------------ PROPERTIES
 
     @property

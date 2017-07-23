@@ -16,6 +16,7 @@ import lib as pct
 from lib import Level
 from .ResourceCollection import ResourceCollection as RC
 from .DBSchema import DBSchema
+from .Safe import Safe
 
 from os.path import dirname, join, abspath
 
@@ -62,6 +63,7 @@ class Repository(object):
 
         self.schemas = RC(schema_dir, [".sql"])
         self.schema = DBSchema(self.db_conn)
+        self.safe = Safe(self)
 
         self.long_transaction = False
 
@@ -172,7 +174,7 @@ class Repository(object):
                 self._transaction_count = 0
 
     @overload
-    def read(self, constraints: dict, table: str) -> list:
+    def read(self, constraints: dict, table: str, lazy: bool = False) -> list:
         """
         Pulls the records corresponding to the **constraints** dictionnary from
         the **table** table.
@@ -190,16 +192,15 @@ class Repository(object):
         self._read_guard()
 
         query_constraints = ""
-        cpt = 0
+        tgc = "id" if lazy else "*"
 
-        for key in constraints:
-            if cpt > 0 and cpt < len(constraints):
+        for index, key in enumerate(constraints):
+            if index > 0 and index < len(constraints):
                 query_constraints += " AND "
             query_constraints += "{0}='{1}'".format(key, constraints[key])
-            cpt += 1
 
-        query = "SELECT * FROM {0} WHERE {1};".format(
-            table, query_constraints
+        query = "SELECT {0} FROM {1} WHERE {2};".format(
+            tgc, table, query_constraints
         )
 
         pct.log("Executing query : %s" % query, pct.Level.DEBUG)
@@ -208,11 +209,13 @@ class Repository(object):
         return [dict(cell) for cell in cursor.fetchall()]
 
     @read.add
-    def read(self, constraints: dict, table: str, link: str) -> list:
+    def read(self, constraints: dict, table: str, link: str,
+             lazy: bool = False) -> list:
         """
         Attemps to find the connection between **table** and **link**
         from the underlying DBSchema before to match the **constraints**
-        dictionnary on **table**. Records from **link** connected to the
+        dictionnary on **table**. Records from **link** connected to the        tgc = "id" if lazy else "*"
+
         found **table** records are then returned.
 
         :param constraints: Key/value dictionnary used to filter the database
@@ -230,35 +233,31 @@ class Repository(object):
         """
         self._read_guard()
 
+        tgc = "id" if lazy else "*"
         path = self.schema.path(table, link)
         query_constraints = ""
-        cpt = 0
 
         if not path:
             raise RepositoryException(
                 "No connection found between {0} and {1}".format(table, link)
             )
 
-        for key in constraints:
-            if cpt > 0 and cpt < len(constraints):
+        for index, key in enumerate(constraints):
+            if index > 0 and index < len(constraints):
                 query_constraints += " AND "
             query_constraints += "{2}.{0}='{1}'".format(
                 key, constraints[key], table
             )
-            cpt += 1
 
         query_join = ""
-        for index, milestone in enumerate(list(reversed(path.keys()))):
-            if index > 0 and index < len(path) - 1:
-                query_join += "\n"
-
+        for milestone in list(reversed(path.keys())):
             query_join += " INNER JOIN {0} ON {1}.{2}={3}.{4}".format(
                 milestone[0], milestone[0], path[milestone][0],
                 milestone[1], path[milestone][1]
             )
 
-        query = "SELECT * FROM {0}{1} WHERE {2};".format(
-            link, query_join, query_constraints
+        query = "SELECT {1}.{0} FROM {1}{2} WHERE {3};".format(
+            tgc, link, query_join, query_constraints
         )
 
         pct.log("Executing query : %s" % query, pct.Level.DEBUG)
@@ -267,7 +266,7 @@ class Repository(object):
         return [dict(cell) for cell in cursor.fetchall()]
 
     @read.add
-    def read(self, table: str) -> list:
+    def read(self, table: str, lazy: bool = False) -> list:
         """
         Pulls every records from the **table** table.
         Same as `read({}, "table")`.
@@ -277,9 +276,12 @@ class Repository(object):
         :return:        A list of dictionnaries, corresponding to the records.
         :rtype:         list
         """
+        tgc = "id" if lazy else "*"
         self._read_guard()
 
-        cursor = self.db_conn.execute("SELECT * FROM {0};".format(table))
+        cursor = self.db_conn.execute("SELECT {0} FROM {1};".format(
+            tgc, table
+        ))
 
         return [dict(cell) for cell in cursor.fetchall()]
 

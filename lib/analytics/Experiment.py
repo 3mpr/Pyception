@@ -100,11 +100,13 @@ class Experiment(object):
             'name': self.name,
             'subject': self.subject.id
         }, "experiments")
+
         if not repo_self:
             pct.log(" Failed", Level.FAILED)
             pct.log("Experiment %s for %s does not exist in database." %
                     (self.name, self.subject.name), Level.WARNING)
             return
+
         repo_self = repo_self[0]
         pct.log(" Done", Level.DONE)
 
@@ -112,14 +114,9 @@ class Experiment(object):
         self.data = self.repository.read({'experiment': self.id}, "data")
         self.persistent = True
 
-        experiment_aois = self.repository.read({
+        aois = self.repository.read({
             'experiment': self.id
-        }, "experiments_aois")
-        aois = list()
-        for experiment_aoi in experiment_aois:
-            aois.append(self.repository.read({
-                'id': experiment_aoi['aoi']
-            }, "aois")[0])
+        }, "experiments", "aois")
 
         for aoi_def in aois:
             self.aois.append(Area(
